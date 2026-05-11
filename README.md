@@ -1,13 +1,24 @@
-![Build](https://github.com/ioquake/ioq3/workflows/Build/badge.svg)
-
                    ,---------------------------------------.
-                   |   _                     _       ____  |
-                   |  (_)___  __ _ _  _ __ _| |_____|__ /  |
-                   |  | / _ \/ _` | || / _` | / / -_)|_ \  |
-                   |  |_\___/\__, |\_,_\__,_|_\_\___|___/  |
-                   |            |_|                        |
+                   |         _             _____           |
+                   |        (_)___ __ _ __ \___ \          |
+                   |        | / _ \  _  _ \  \__ \         |
+                   |        |_\___/\__\__\_\ \____\        |
                    |                                       |
-                   `--------- https://ioquake3.org --------'
+                   `--- powered by https://ioquake3.org ---'
+
+This is a fork of **ioquake3**, available at https://github.com/ioquake/ioq3. The purpose of this fork is to provide extra features and support
+for **metarena** mod.
+
+## What have been changed
+
+This is a quick changelog for iom3. If you're looking for full
+changes list, visit also [ioq3 readme](https://github.com/ioquake/ioq3).
+
+- `sv_forceSnaps` forces client snaps to sv_fps. Helps against client issues, with no harm to user's connection.
+
+# ioquake3
+
+_**This is original article from ioquake3 project.**_
 
 The intent of this project is to provide a baseline engine which may be used
 for further development and to play _Quake 3: Arena,_ _Team Arena,_ and mods.
@@ -94,11 +105,11 @@ your project. We're looking forward to hearing about it.
 </p>
 
 # Compilation and installation
-**Note that for all of these platforms, if you want to play _Quake 3: Arena_ or 
-the expansion pack, _Team Arena_, you'll still need to buy a copy of the game.**
-The _Quake 3_ game source code is freely available under the GPLv2, not the game data.
 
-You can get links to buy and support the project here: https://ioquake3.org/buy/
+> [!NOTE]
+> For all of these platforms, if you want to play _Quake 3: Arena_ or the expansion pack, _Team Arena_, you'll still need to buy a copy of the game. The _Quake 3_ game source code is freely available under the GPLv2, not the game data.
+>
+> You can get links to buy and support the **ioquake3** project here: https://ioquake3.org/buy/
 
 
 You can make your own mod that either requires the original game data or a new game  

@@ -1437,22 +1437,26 @@ void SV_UserinfoChanged( client_t *cl ) {
 		}
 	}
 
-	// snaps command
-	val = Info_ValueForKey (cl->userinfo, "snaps");
-	
-	if(strlen(val))
-	{
-		i = atoi(val);
-		
-		if(i < 1)
-			i = 1;
-		else if(i > sv_fps->integer)
-			i = sv_fps->integer;
+	if (sv_forceSnaps->integer) {
+		i = 1000 / sv_fps->integer;
+	} else {
+		// snaps command
+		val = Info_ValueForKey (cl->userinfo, "snaps");
 
-		i = 1000 / i;
+		if(strlen(val))
+		{
+			i = atoi(val);
+
+			if(i < 1)
+				i = 1;
+			else if(i > sv_fps->integer)
+				i = sv_fps->integer;
+
+			i = 1000 / i;
+		}
+		else
+			i = 50;
 	}
-	else
-		i = 50;
 
 	if(i != cl->snapshotMsec)
 	{

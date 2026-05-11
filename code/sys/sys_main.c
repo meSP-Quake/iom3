@@ -364,6 +364,51 @@ void Sys_Init(void)
 	Cvar_Set( "username", Sys_GetCurrentUser( ) );
 }
 
+static qboolean CL_OSPCharHexToInt(char c, int* out)
+{
+	if (c >= '0' && c <= '9')
+	{
+		*out = c - '0';
+		return qtrue;
+	}
+	if (c >= 'a' && c <= 'f')
+	{
+		*out = c - 'a' + 10;
+		return qtrue;
+	}
+	if (c >= 'A' && c <= 'F')
+	{
+		*out = c - 'A' + 10;
+		return qtrue;
+	}
+	return qfalse;
+}
+
+qboolean CL_Hex16GetColor(const char* str, float* color)
+{
+	int d1;
+	int d2;
+	int color_int;
+	if (!str) return qfalse;
+
+	if (!CL_OSPCharHexToInt(str[0], &d1))
+	{
+		return  qfalse;
+	}
+
+	if (!CL_OSPCharHexToInt(str[1], &d2))
+	{
+		return  qfalse;
+	}
+
+	color_int = d1 * 16 + d2;
+
+	*color = (float)color_int;
+	*color /= 255.0f;
+
+	return qtrue;
+}
+
 /*
 =================
 Sys_AnsiColorPrint
@@ -407,9 +452,34 @@ void Sys_AnsiColorPrint( const char *msg )
 			}
 			else
 			{
+				if (*(msg + 1) == 'X') {
+					vec3_t color;
+
+					msg += 2;
+
+					if (
+						strlen(msg) >= 6 &&
+						CL_Hex16GetColor(msg, &color[0]) &&
+						CL_Hex16GetColor(msg + 2, &color[1]) &&
+						CL_Hex16GetColor(msg + 4, &color[2])
+					) {
+						Com_sprintf(buffer, sizeof(buffer), "\033[0m\033[38;2;%i;%i;%im", 
+							(int)(color[0] * 255), (int)(color[1] * 255), (int)(color[2] * 255));
+						fputs(buffer, stderr);
+
+						msg += 6;
+						continue;
+					}
+
+					continue;
+				} else if (*(msg + 1) == 'x') {
+					msg += 8;
+					continue;
+				}
+
 				// Print the color code (reset first to clear potential inverse (black))
 				Com_sprintf( buffer, sizeof( buffer ), "\033[0m\033[%dm",
-						q3ToAnsi[ ColorIndex( *( msg + 1 ) ) ] );
+					q3ToAnsi[ ColorIndex( *( msg + 1 ) ) ] );
 				fputs( buffer, stderr );
 				msg += 2;
 			}
@@ -746,6 +816,8 @@ char *Sys_ParseProtocolUri( const char *uri )
 #	endif
 #endif
 
+#include <unistd.h>
+
 /*
 =================
 Sys_SigHandler
@@ -763,12 +835,14 @@ void Sys_SigHandler( int signal )
 	else
 	{
 		signalcaught = qtrue;
-		VM_Forced_Unload_Start();
+		// VM_Forced_Unload_Start();
 #ifndef DEDICATED
-		CL_Shutdown(va("Received signal %d", signal), qtrue, qtrue);
+		// CL_Shutdown(va("Received signal %d", signal), qtrue, qtrue);
 #endif
-		SV_Shutdown(va("Received signal %d", signal) );
-		VM_Forced_Unload_Done();
+		// SV_Shutdown(va("Received signal %d", signal) );
+		// VM_Forced_Unload_Done();
+
+		kill(getpid(), SIGILL);
 	}
 
 	if( signal == SIGTERM || signal == SIGINT )
@@ -881,9 +955,9 @@ int main( int argc, char **argv )
 	Com_Init( commandLine );
 	NET_Init( );
 
-	signal( SIGILL, Sys_SigHandler );
-	signal( SIGFPE, Sys_SigHandler );
-	signal( SIGSEGV, Sys_SigHandler );
+	// signal( SIGILL, Sys_SigHandler );
+	// signal( SIGFPE, Sys_SigHandler );
+	// signal( SIGSEGV, Sys_SigHandler );
 	signal( SIGTERM, Sys_SigHandler );
 	signal( SIGINT, Sys_SigHandler );
 

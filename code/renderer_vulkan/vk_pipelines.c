@@ -409,9 +409,16 @@ static void vk_create_pipeline(const struct Vk_Pipeline_Def* def, VkPipeline* pP
 	depth_stencil_state.flags = 0;
 	depth_stencil_state.depthTestEnable = (def->state_bits & GLS_DEPTHTEST_DISABLE) ? VK_FALSE : VK_TRUE;
 	depth_stencil_state.depthWriteEnable = (def->state_bits & GLS_DEPTHMASK_TRUE) ? VK_TRUE : VK_FALSE;
-	depth_stencil_state.depthCompareOp = (def->state_bits & GLS_DEPTHFUNC_EQUAL) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_LESS_OR_EQUAL;
 	depth_stencil_state.depthBoundsTestEnable = VK_FALSE;
 	depth_stencil_state.stencilTestEnable = (def->shadow_phase != SHADOWS_RENDERING_DISABLED) ? VK_TRUE : VK_FALSE;
+
+    if (def->state_bits & GLS_DEPTHFUNC_EQUAL) {
+        depth_stencil_state.depthCompareOp = VK_COMPARE_OP_EQUAL;
+    } else if (def->state_bits & GLS_DEPTHFUNC_ALWAYS) {
+        depth_stencil_state.depthCompareOp = VK_COMPARE_OP_ALWAYS;
+    } else {
+        depth_stencil_state.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    }
 
 	if (def->shadow_phase == SHADOWS_RENDERING_EDGES)
     {

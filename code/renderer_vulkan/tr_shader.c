@@ -670,6 +670,10 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 			{
 				depthFuncBits = GLS_DEPTHFUNC_EQUAL;
 			}
+			else if ( !Q_stricmp( token, "always" ) )
+			{
+				depthFuncBits = GLS_DEPTHFUNC_ALWAYS;
+			}
 			else
 			{
 				ri.Printf( PRINT_WARNING, "WARNING: unknown depthfunc '%s' in shader '%s'\n", token, shader.name );

@@ -754,13 +754,13 @@ typedef struct {
 } field_t;
 
 void Field_Clear( field_t *edit );
-void Field_AutoComplete( field_t *edit );
+void Field_AutoComplete( field_t *edit, qboolean printResults );
 void Field_CompleteKeyname( void );
 void Field_CompleteFilename( const char *dir, const char *ext,
 		char *filter, qboolean stripExt,
 		qboolean allowNonPureFilesOnDisk );
 void Field_CompleteCommand( char *cmd,
-		qboolean doCommands, qboolean doCvars );
+		qboolean doCommands, qboolean doCvars, qboolean printResults );
 void Field_CompletePlayerName( const char **names, int count );
 
 /*
@@ -994,7 +994,12 @@ void CL_JoystickEvent( int axis, int value, int time );
 
 void CL_PacketEvent( netadr_t from, msg_t *msg );
 
-void CL_ConsolePrint( char *text );
+typedef enum {
+	CON_MASTER,
+	CON_CHAT
+} console_type_t;
+
+void CL_ConsolePrint( char *text, console_type_t console );
 
 void CL_MapLoading( void );
 // do a screen update before starting to load a map

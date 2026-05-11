@@ -40,9 +40,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //  #define PROTOCOL_HANDLER		"foobar"
   #define CONFIG_PREFIX			"fooconfig"
 #else
-  #define PRODUCT_NAME				"ioq3"
+  #define PRODUCT_NAME				"ioq3m"
   #define BASEGAME					"baseq3"
-  #define CLIENT_WINDOW_TITLE		"ioquake3"
+  #define CLIENT_WINDOW_TITLE		"ioquake3-m"
   #define CLIENT_WINDOW_MIN_TITLE	"ioq3"
   #define HOMEPATH_NAME_UNIX_LEGACY	".q3a"
   #define HOMEPATH_NAME				"Quake3"
@@ -65,7 +65,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define BASETA				"missionpack"
 
 #ifndef PRODUCT_VERSION
-  #define PRODUCT_VERSION "1.36"
+  #define PRODUCT_VERSION "1.36m"
 #endif
 
 #ifndef PRODUCT_DATE

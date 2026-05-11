@@ -39,7 +39,7 @@ qboolean Q_IsColorString(const char *p) {
 	if (p[1] < 0)
 		return qfalse;
 
-	if (isalnum(p[1]) == 0)
+	if (p[1] != 'x' && p[1] != 'X' && isalnum(p[1]) == 0)
 		return qfalse;
 
 	return qtrue;

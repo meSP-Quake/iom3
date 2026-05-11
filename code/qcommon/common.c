@@ -186,7 +186,7 @@ void QDECL Com_Printf( const char *fmt, ... ) {
 	}
 
 #ifndef DEDICATED
-	CL_ConsolePrint( msg );
+	CL_ConsolePrint( msg, CON_MASTER );
 #endif
 
 	// echo to dedicated console and early console
@@ -3320,6 +3320,7 @@ void Field_Clear( field_t *edit ) {
 static const char *completionString;
 static char shortestMatch[MAX_TOKEN_CHARS];
 static int	matchCount;
+static qboolean completionPrintable;
 // field we are working on, passed to Field_AutoComplete(&g_consoleCommand for instance)
 static field_t *completionField;
 
@@ -3425,7 +3426,7 @@ static qboolean Field_Complete( void )
 		return qtrue;
 	}
 
-	Com_Printf( "]%s\n", completionField->buffer );
+	Com_Printf( ">%s\n", completionField->buffer );
 
 	return qfalse;
 }
@@ -3443,7 +3444,7 @@ void Field_CompleteKeyname( void )
 
 	Key_KeynameCompletion( FindMatches );
 
-	if( !Field_Complete( ) )
+	if( completionPrintable && !Field_Complete( ) )
 		Key_KeynameCompletion( PrintMatches );
 }
 #endif
@@ -3462,7 +3463,7 @@ void Field_CompleteFilename( const char *dir, const char *ext,
 
 	FS_FilenameCompletion( dir, ext, filter, stripExt, FindMatches, allowNonPureFilesOnDisk );
 
-	if( !Field_Complete( ) )
+	if( completionPrintable && !Field_Complete( ) )
 		FS_FilenameCompletion( dir, ext, filter, stripExt, PrintMatches, allowNonPureFilesOnDisk );
 }
 
@@ -3472,9 +3473,13 @@ Field_CompleteCommand
 ===============
 */
 void Field_CompleteCommand( char *cmd,
-		qboolean doCommands, qboolean doCvars )
+		qboolean doCommands, qboolean doCvars, qboolean printResults )
 {
 	int		completionArgument = 0;
+	char  initial = '\0';
+	char *cmd_p;
+
+	completionPrintable = printResults;
 
 	// Skip leading whitespace and quotes
 	cmd = Com_SkipCharset( cmd, " \"" );
@@ -3486,11 +3491,13 @@ void Field_CompleteCommand( char *cmd,
 	if( *( cmd + strlen( cmd ) - 1 ) == ' ' )
 	{
 		completionString = "";
+		cmd_p = Cmd_Argv(0);
 		completionArgument++;
 	}
 	else
-		completionString = Cmd_Argv( completionArgument - 1 );
+		completionString = cmd_p = Cmd_Argv( completionArgument - 1 );
 
+	initial = completionField->buffer[ 0 ];
 #ifndef DEDICATED
 	// add a '\' to the start of the buffer if it might be sent as chat otherwise
 	if( con_autochat->integer && completionField->buffer[ 0 ] &&
@@ -3518,6 +3525,10 @@ void Field_CompleteCommand( char *cmd,
 		const char *baseCmd = Cmd_Argv( 0 );
 		char *p;
 
+		matchCount = 0;
+		shortestMatch[ 0 ] = 0;
+		cmd_p--;
+
 #ifndef DEDICATED
 		// This should always be true
 		if( baseCmd[ 0 ] == '\\' || baseCmd[ 0 ] == '/' )
@@ -3525,7 +3536,7 @@ void Field_CompleteCommand( char *cmd,
 #endif
 
 		if( ( p = Field_FindFirstSeparator( cmd ) ) )
-			Field_CompleteCommand( p + 1, qtrue, qtrue ); // Compound command
+			Field_CompleteCommand( p + 1, qtrue, qtrue, printResults ); // Compound command
 		else
 			Cmd_CompleteArgument( baseCmd, cmd, completionArgument ); 
 	}
@@ -3546,7 +3557,7 @@ void Field_CompleteCommand( char *cmd,
 		if( doCvars )
 			Cvar_CommandCompletion( FindMatches );
 
-		if( !Field_Complete( ) )
+		if( printResults && !Field_Complete( ) )
 		{
 			// run through again, printing matches
 			if( doCommands )
@@ -3555,6 +3566,15 @@ void Field_CompleteCommand( char *cmd,
 			if( doCvars )
 				Cvar_CommandCompletion( PrintCvarMatches );
 		}
+	}
+
+	if ( !printResults ) {
+		if (initial != '/' && initial != '\\') {
+			cmd[0] = '\0';
+			return;
+		}
+
+		Com_Memcpy(cmd + (cmd_p - Cmd_Argv(0)) + 1, shortestMatch, strlen(shortestMatch));
 	}
 }
 
@@ -3565,11 +3585,11 @@ Field_AutoComplete
 Perform Tab expansion
 ===============
 */
-void Field_AutoComplete( field_t *field )
+void Field_AutoComplete( field_t *field, qboolean printResults )
 {
 	completionField = field;
 
-	Field_CompleteCommand( completionField->buffer, qtrue, qtrue );
+	Field_CompleteCommand( completionField->buffer, qtrue, qtrue, printResults );
 }
 
 /*

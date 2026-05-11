@@ -33,6 +33,7 @@ and one exported function: Perform
 
 */
 
+#include "q_shared.h"
 #include "vm_local.h"
 
 
@@ -699,8 +700,7 @@ void VM_Free( vm_t *vm ) {
 
 	if(vm->callLevel) {
 		if(!forced_unload) {
-			Com_Error( ERR_FATAL, "VM_Free(%s) on running vm", vm->name );
-			return;
+			Com_Printf( S_COLOR_YELLOW "VM_Free(%s) on running vm", vm->name );
 		} else {
 			Com_Printf( "forcefully unloading %s vm\n", vm->name );
 		}

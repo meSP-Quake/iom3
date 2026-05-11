@@ -1497,6 +1497,7 @@ typedef struct {
 	qboolean    colorMask[4];
 	qboolean    depthFill;
 	float       greyscale;
+	float       lightallGreyscale;
 } backEndState_t;
 
 /*
@@ -1836,6 +1837,7 @@ extern  cvar_t  *r_shadowCascadeZBias;
 extern  cvar_t  *r_ignoreDstAlpha;
 
 extern	cvar_t	*r_greyscale;
+extern	cvar_t	*r_lightallGreyscale;
 
 extern	cvar_t	*r_ignoreGLErrors;
 
@@ -1961,10 +1963,11 @@ void	GL_Cull( int cullType );
 
 #define GLS_POLYMODE_LINE						0x00001000
 
-#define GLS_DEPTHTEST_DISABLE					0x00010000
-#define GLS_DEPTHFUNC_EQUAL						0x00020000
-#define GLS_DEPTHFUNC_GREATER                   0x00040000
-#define GLS_DEPTHFUNC_BITS                      0x00060000
+#define GLS_DEPTHTEST_DISABLE         0x00010000
+#define GLS_DEPTHFUNC_EQUAL           0x00020000
+#define GLS_DEPTHFUNC_GREATER         0x00040000
+#define GLS_DEPTHFUNC_ALWAYS          0x00080000
+#define GLS_DEPTHFUNC_BITS            (GLS_DEPTHFUNC_EQUAL | GLS_DEPTHFUNC_GREATER | GLS_DEPTHFUNC_ALWAYS)
 
 #define GLS_ATEST_GT_0							0x10000000
 #define GLS_ATEST_LT_80							0x20000000
@@ -2364,7 +2367,7 @@ RENDERER BACK END COMMAND QUEUE
 =============================================================
 */
 
-#define	MAX_RENDER_COMMANDS	0x80000
+#define	MAX_RENDER_COMMANDS	0x400000
 
 typedef struct {
 	byte	cmds[MAX_RENDER_COMMANDS];
@@ -2482,8 +2485,8 @@ typedef enum {
 // these are sort of arbitrary limits.
 // the limits apply to the sum of all scenes in a frame --
 // the main view, all the 3D icons, etc
-#define	MAX_POLYS		600
-#define	MAX_POLYVERTS	3000
+#define	MAX_POLYS		6000
+#define	MAX_POLYVERTS	30000
 
 // all of the information needed by the back end must be
 // contained in a backEndData_t

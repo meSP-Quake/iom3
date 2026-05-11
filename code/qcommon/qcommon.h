@@ -996,7 +996,8 @@ void CL_PacketEvent( netadr_t from, msg_t *msg );
 
 typedef enum {
 	CON_MASTER,
-	CON_CHAT
+	CON_CHAT,
+	CON_CHAT_REPEAT
 } console_type_t;
 
 void CL_ConsolePrint( char *text, console_type_t console );

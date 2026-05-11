@@ -68,7 +68,7 @@ qboolean UI_GameCommand( void ) {
 void CL_ForwardCommandToServer( const char *string ) {
 }
 
-void CL_ConsolePrint( char *txt ) {
+void CL_ConsolePrint( char *txt, console_type_t console ) {
 }
 
 void CL_JoystickEvent( int axis, int value, int time ) {

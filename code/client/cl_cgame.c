@@ -248,6 +248,22 @@ void CL_ConfigstringModified( void ) {
 
 }
 
+/*
+=================
+CL_RemoveChatEscapeChar
+=================
+*/
+static void CL_RemoveChatEscapeChar( char *text ) {
+	int i, l;
+
+	l = 0;
+	for ( i = 0; text[i]; i++ ) {
+		if (text[i] == '\x19')
+			continue;
+		text[l++] = text[i];
+	}
+	text[l] = '\0';
+}
 
 /*
 ===================
@@ -354,6 +370,16 @@ rescan:
 		Con_Close();
 		// take a special screenshot next frame
 		Cbuf_AddText( "wait ; wait ; wait ; wait ; screenshot levelshot\n" );
+		return qtrue;
+	}
+
+	if ( !strcmp( cmd, "chat" ) || !strcmp( cmd, "tchat" ) ) {
+		char text[150];
+
+		Q_strncpyz( text, Cmd_Argv(1), sizeof(text) );
+		CL_RemoveChatEscapeChar( text );
+		CL_ConsolePrint( va("%s\n", text), CON_CHAT );
+
 		return qtrue;
 	}
 

@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 #include "client.h"
+#include "keycodes.h"
 
 /*
 
@@ -34,6 +35,7 @@ int			historyLine;	// the line being displayed from history buffer
 							// will be <= nextHistoryLine
 
 field_t		g_consoleField;
+field_t		g_predictedField;
 field_t		chatField;
 qboolean	chat_team;
 
@@ -344,7 +346,7 @@ x, y, and width are in pixels
 ===================
 */
 static void Field_VariableSizeDraw( field_t *edit, int x, int y, int width, int size,
-	qboolean drawSmall, qboolean showCursor, qboolean noColorEscape ) {
+	qboolean drawSmall, qboolean showCursor, qboolean noColorEscape, float opacity ) {
 	int		len;
 	int		drawLen;
 	int		prestep;
@@ -384,7 +386,8 @@ static void Field_VariableSizeDraw( field_t *edit, int x, int y, int width, int 
 	if ( drawSmall ) {
 		float	color[4];
 
-		color[0] = color[1] = color[2] = color[3] = 1.0;
+		color[0] = color[1] = color[2] = 1.0;
+		color[3] = opacity;
 		SCR_DrawSmallStringExt( x, y, str, color, qfalse, noColorEscape );
 	} else {
 		// draw big string with drop shadow
@@ -416,14 +419,14 @@ static void Field_VariableSizeDraw( field_t *edit, int x, int y, int width, int 
 	}
 }
 
-void Field_Draw( field_t *edit, int x, int y, int width, qboolean showCursor, qboolean noColorEscape ) 
+void Field_Draw( field_t *edit, int x, int y, int width, qboolean showCursor, qboolean noColorEscape, float opacity ) 
 {
-	Field_VariableSizeDraw( edit, x, y, width, g_smallchar_width, qtrue, showCursor, noColorEscape );
+	Field_VariableSizeDraw( edit, x, y, width, g_smallchar_width, qtrue, showCursor, noColorEscape, opacity );
 }
 
 void Field_BigDraw( field_t *edit, int x, int y, int width, qboolean showCursor, qboolean noColorEscape ) 
 {
-	Field_VariableSizeDraw( edit, x, y, width, BIGCHAR_WIDTH, qfalse, showCursor, noColorEscape );
+	Field_VariableSizeDraw( edit, x, y, width, BIGCHAR_WIDTH, qfalse, showCursor, noColorEscape, 1.0 );
 }
 
 /*
@@ -671,7 +674,10 @@ void Console_Key (int key) {
 	// command completion
 
 	if (key == K_TAB) {
-		Field_AutoComplete(&g_consoleField);
+		Field_AutoComplete(&g_consoleField, qtrue);
+
+		g_predictedField = g_consoleField;
+
 		return;
 	}
 
@@ -683,7 +689,7 @@ void Console_Key (int key) {
 			&& historyLine > 0 ) {
 			historyLine--;
 		}
-		g_consoleField = historyEditLines[ historyLine % COMMAND_HISTORY ];
+		g_predictedField = g_consoleField = historyEditLines[ historyLine % COMMAND_HISTORY ];
 		return;
 	}
 
@@ -696,7 +702,7 @@ void Console_Key (int key) {
 			g_consoleField.widthInChars = g_console_field_width;
 			return;
 		}
-		g_consoleField = historyEditLines[ historyLine % COMMAND_HISTORY ];
+		g_predictedField = g_consoleField = historyEditLines[ historyLine % COMMAND_HISTORY ];
 		return;
 	}
 
@@ -1136,7 +1142,7 @@ static void Key_CompleteBind( char *args, int argNum )
 		p = Com_SkipTokens( args, 2, " " );
 
 		if( p > args )
-			Field_CompleteCommand( p, qtrue, qtrue );
+			Field_CompleteCommand( p, qtrue, qtrue, qtrue );
 	}
 }
 
@@ -1396,6 +1402,10 @@ void CL_CharEvent( int key ) {
 	if ( Key_GetCatcher( ) & KEYCATCH_CONSOLE )
 	{
 		Field_CharEvent( &g_consoleField, key );
+
+		g_predictedField = g_consoleField;
+
+		Field_AutoComplete( &g_predictedField, qfalse );
 	}
 	else if ( Key_GetCatcher( ) & KEYCATCH_UI )
 	{
@@ -1408,6 +1418,10 @@ void CL_CharEvent( int key ) {
 	else if ( clc.state == CA_DISCONNECTED )
 	{
 		Field_CharEvent( &g_consoleField, key );
+
+		g_predictedField = g_consoleField;
+
+		Field_AutoComplete( &g_predictedField, qfalse );
 	}
 }
 

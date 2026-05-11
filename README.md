@@ -15,6 +15,18 @@ This is a quick changelog for iom3. If you're looking for full
 changes list, visit also [ioq3 readme](https://github.com/ioquake/ioq3).
 
 - `sv_forceSnaps` forces client snaps to sv_fps. Helps against client issues, with no harm to user's connection.
+- Improved in-game console for better user experience:
+- + Soft colors
+- + Autocompletion
+- + Console now splitted into master tty and chat tty
+
+### How it looks like
+
+Here's screenshots of **OSP2** running on **iom3** compared to classic **ioquake3**:
+
+![iom3](./screenshots/iom3.jpg)
+![ioq3](./screenshots/ioq3.jpg)
+
 
 # ioquake3
 

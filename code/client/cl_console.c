@@ -468,6 +468,7 @@ If no console is visible, the text will appear at the top of the game window
 */
 void CL_ConsolePrint( char *txt, console_type_t console ) {
 	int		y, l;
+	static console_t prevState;
 	unsigned char	c;
 	unsigned short	color;
 	qboolean skipnotify = qfalse;		// NERVE - SMF
@@ -475,8 +476,13 @@ void CL_ConsolePrint( char *txt, console_type_t console ) {
 	console_t *target;
 
 	switch (console) {
+		case CON_CHAT_REPEAT: {
+			memcpy(&con_chat, &prevState, sizeof(console_t));
+			// fallthrough
+		}
 		case CON_CHAT: {
 			target = &con_chat;
+			memcpy(&prevState, &con_chat, sizeof(console_t));
 			break;
 		}
 

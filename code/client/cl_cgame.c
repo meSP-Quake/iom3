@@ -265,6 +265,9 @@ static void CL_RemoveChatEscapeChar( char *text ) {
 	text[l] = '\0';
 }
 
+#define MAX_COMMAND_NAME 1024
+#define MAX_MESSAGE_LENGTH 256
+
 /*
 ===================
 CL_GetServerCommand
@@ -275,6 +278,8 @@ Set up argc/argv for the given command
 qboolean CL_GetServerCommand( int serverCommandNumber ) {
 	char	*s;
 	char	*cmd;
+	static char currCmd[MAX_COMMAND_NAME];
+	static char prevCmd[MAX_COMMAND_NAME];
 	static char bigConfigString[BIG_INFO_STRING];
 	int argc;
 
@@ -302,6 +307,9 @@ rescan:
 	Cmd_TokenizeString( s );
 	cmd = Cmd_Argv(0);
 	argc = Cmd_Argc();
+
+	memcpy(prevCmd, currCmd, MAX_COMMAND_NAME);
+	Q_strncpyz(currCmd, cmd, MAX_COMMAND_NAME);
 
 	if ( !strcmp( cmd, "disconnect" ) ) {
 		// https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=552
@@ -374,11 +382,28 @@ rescan:
 	}
 
 	if ( !strcmp( cmd, "chat" ) || !strcmp( cmd, "tchat" ) ) {
-		char text[150];
+		static char prevText[MAX_MESSAGE_LENGTH];
+		static int count = 1;
+
+		char text[MAX_MESSAGE_LENGTH];
 
 		Q_strncpyz( text, Cmd_Argv(1), sizeof(text) );
 		CL_RemoveChatEscapeChar( text );
-		CL_ConsolePrint( va("%s\n", text), CON_CHAT );
+
+		// Here I'm checking previous command to have exact match with current one. This may
+		// seem being not correct way as any other commands, including other spammers, are
+		// capable of interrupting spam we're filtering, leading to spam being not grouped.
+		// But we're fine, implementing this properly would be really hard and likely harm
+		// user experience.
+		if ( !Q_strncmp(prevText, text, MAX_MESSAGE_LENGTH) && !Q_stricmp(prevCmd, currCmd) ) {
+			count++;
+			CL_ConsolePrint( va("^6(x%i)^7%s\n", count, text), CON_CHAT_REPEAT );
+		} else {
+			count = 1;
+			CL_ConsolePrint( va("%s\n", text), CON_CHAT );
+		}
+
+		memcpy(prevText, text, MAX_MESSAGE_LENGTH);
 
 		return qtrue;
 	}

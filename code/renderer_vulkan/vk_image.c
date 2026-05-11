@@ -446,7 +446,53 @@ static void vk_createImageViewAndDescriptorSet(image_t* pImage)
     // the size is the size of the MVP.
 }
 
+static void R_MipMapsRGB( byte *in, byte *out, int inWidth, int inHeight)
+{
+	int x, y, c, stride;
+	const byte *in2;
+	float total;
+	static float downmipSrgbLookup[256];
+	static int downmipSrgbLookupSet = 0;
 
+	if (!downmipSrgbLookupSet) {
+		for (x = 0; x < 256; x++)
+			downmipSrgbLookup[x] = powf(x / 255.0f, 2.2f) * 0.25f;
+		downmipSrgbLookupSet = 1;
+	}
+
+	if (inWidth == 1 && inHeight == 1)
+		return;
+
+	if (inWidth == 1 || inHeight == 1) {
+		for (x = (inWidth * inHeight) >> 1; x; x--) {
+			for (c = 3; c; c--, in++) {
+				total  = (downmipSrgbLookup[*(in)] + downmipSrgbLookup[*(in + 4)]) * 2.0f;
+
+				*out++ = (byte)(powf(total, 1.0f / 2.2f) * 255.0f);
+			}
+			*out++ = (*(in) + *(in + 4)) >> 1; in += 5;
+		}
+		
+		return;
+	}
+
+	stride = inWidth * 4;
+	inWidth >>= 1; inHeight >>= 1;
+
+	in2 = in + stride;
+	for (y = inHeight; y; y--, in += stride, in2 += stride) {
+		for (x = inWidth; x; x--) {
+			for (c = 3; c; c--, in++, in2++) {
+				total = downmipSrgbLookup[*(in)]  + downmipSrgbLookup[*(in + 4)]
+				      + downmipSrgbLookup[*(in2)] + downmipSrgbLookup[*(in2 + 4)];
+
+				*out++ = (byte)(powf(total, 1.0f / 2.2f) * 255.0f);
+			}
+
+			*out++ = (*(in) + *(in + 4) + *(in2) + *(in2 + 4)) >> 2; in += 5, in2 += 5;
+		}
+	}
+}
 
 image_t* R_CreateImage( const char *name, unsigned char* pic, const uint32_t width, const uint32_t height,
 						VkBool32 isMipMap, VkBool32 allowPicmip, int glWrapClampMode)
@@ -518,6 +564,14 @@ image_t* R_CreateImage( const char *name, unsigned char* pic, const uint32_t wid
     {
         scaled_width >>= r_picmip->integer;
         scaled_height >>= r_picmip->integer;
+
+        if (scaled_width < 1) {
+            scaled_width = 1;
+        }
+
+        if (scaled_height < 1) {
+            scaled_height = 1;
+        }
     }
 
     pImage->uploadWidth = scaled_width;
@@ -531,15 +585,35 @@ image_t* R_CreateImage( const char *name, unsigned char* pic, const uint32_t wid
         // just info
         // ri.Printf( PRINT_WARNING, "ResampleTexture: inwidth: %d, inheight: %d, outwidth: %d, outheight: %d\n",
         //        width, height, scaled_width, scaled_height );
-        
+
+        byte *tempBuffer = (byte*) malloc (4 * 2048 * 2048);
+
+        memcpy(tempBuffer, pic, 4 * width * height);
+        int cur_width = width;
+        int cur_height = height;
+
         //go down from [width, height] to [scaled_width, scaled_height]
-        ResampleTexture (pUploadBuffer, width, height, pic, scaled_width, scaled_height);
+        while (cur_width > scaled_width || cur_height > scaled_height) {
+            R_MipMapsRGB (tempBuffer, tempBuffer, cur_width, cur_height);
+
+            cur_width >>= 1;
+            cur_height >>= 1;
+
+            if (cur_width < 1) cur_width = 1;
+            if (cur_height < 1) cur_height = 1;
+        }
+
+        pImage->uploadWidth = cur_width;
+        pImage->uploadHeight = cur_height;
+
+        memcpy(pUploadBuffer, tempBuffer, buffer_size);
+
+        free(tempBuffer);
     }
     else
     {
         memcpy(pUploadBuffer, pic, buffer_size);
     }
-
 
     // perform optional picmip operation
 

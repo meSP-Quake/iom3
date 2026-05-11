@@ -1545,6 +1545,8 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 			GLSL_SetUniformVec4(sp, UNIFORM_CUBEMAPINFO, vec);
 		}
 
+		GLSL_SetUniformFloat(sp, UNIFORM_GREYSCALE, backEnd.lightallGreyscale);
+
 		//
 		// draw
 		//

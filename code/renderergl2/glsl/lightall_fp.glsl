@@ -1,5 +1,7 @@
 uniform sampler2D u_DiffuseMap;
 
+uniform float     u_Greyscale;
+
 #if defined(USE_LIGHTMAP)
 uniform sampler2D u_LightMap;
 #endif
@@ -68,6 +70,7 @@ varying vec4      var_LightDir;
 varying vec4      var_PrimaryLightDir;
 #endif
 
+const vec3 LUMA = vec3(0.2125, 0.7154, 0.0721);
 
 #define EPSILON 0.00000001
 
@@ -518,4 +521,9 @@ void main()
 #endif
 
 	gl_FragColor.a = alpha;
+
+	if (u_Greyscale > 0.0) {
+		float y = dot(gl_FragColor.rgb, LUMA);
+		gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(y), clamp(u_Greyscale, 0.0, 1.0));
+	}
 }

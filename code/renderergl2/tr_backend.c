@@ -118,6 +118,10 @@ void GL_State( unsigned long stateBits )
 		{
 			qglDepthFunc( GL_GREATER );
 		}
+		else if ( stateBits & GLS_DEPTHFUNC_ALWAYS )
+		{
+			qglDepthFunc( GL_ALWAYS );
+		}
 		else
 		{
 			qglDepthFunc( GL_LEQUAL );
@@ -396,6 +400,7 @@ void RB_BeginDrawingView (void) {
 
 	// cache the clamped greyscale value
 	backEnd.greyscale = Com_Clamp(0.0f, 1.0f, r_greyscale->value);
+	backEnd.lightallGreyscale = Com_Clamp(0.0f, 1.0f, r_lightallGreyscale->value);
 
 	// clip to the plane of the portal
 	if ( backEnd.viewParms.isPortal ) {

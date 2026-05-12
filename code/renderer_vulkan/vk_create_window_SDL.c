@@ -30,14 +30,18 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "tr_cvar.h"
 #include "icon_oa.h"
 #include "glConfig.h"
+#include <SDL3/SDL_error.h>
+#include <SDL3/SDL_oldnames.h>
+#include <SDL3/SDL_surface.h>
+#include <SDL3/SDL_video.h>
 
 
 #ifdef USE_INTERNAL_SDL_HEADERS
 #   include "SDL.h"
 #   include "SDL_vulkan.h"
 #else
-#   include <SDL.h>
-#   include <SDL_vulkan.h>
+#	include <SDL3/SDL.h>
+#   include <SDL3/SDL_vulkan.h>
 #endif
 
 
@@ -58,25 +62,28 @@ static void VKimp_DetectAvailableModes(void)
 	// If a window exists, note its display index
 	if( window_sdl != NULL )
 	{
-		r_displayIndex->integer = SDL_GetWindowDisplayIndex( window_sdl );
-		if( r_displayIndex->integer < 0 )
+		r_displayIndex->integer = SDL_GetDisplayForWindow( window_sdl );
+		if( r_displayIndex->integer <= 0 )
 		{
-			ri.Printf(PRINT_ALL, "SDL_GetWindowDisplayIndex() failed: %s\n", SDL_GetError() );
+			ri.Printf(PRINT_ALL, "SDL_GetDisplayForWindow() failed: %s\n", SDL_GetError() );
             return;
 		}
 	}
 
-	int numSDLModes = SDL_GetNumDisplayModes( r_displayIndex->integer );
+	int numSDLModes = 0;
+	
+	SDL_DisplayMode **modes = SDL_GetFullscreenDisplayModes( r_displayIndex->integer, &numSDLModes );
 
-	if( SDL_GetWindowDisplayMode( window_sdl, &windowMode ) < 0 || numSDLModes <= 0 )
+	if( numSDLModes <= 0 || !modes )
 	{
 		ri.Printf(PRINT_ALL, "Couldn't get window display mode, no resolutions detected: %s\n", SDL_GetError() );
 		return;
 	}
 
 	int numModes = 0;
-	SDL_Rect* modes = SDL_calloc(numSDLModes, sizeof( SDL_Rect ));
-	if ( !modes )
+	SDL_Rect* resolution_modes = SDL_calloc(numSDLModes, sizeof( SDL_Rect ));
+
+	if ( !resolution_modes )
 	{
         ////////////////////////////////////
 		ri.Error(ERR_FATAL, "Out of memory" );
@@ -85,45 +92,44 @@ static void VKimp_DetectAvailableModes(void)
 
 	for( i = 0; i < numSDLModes; i++ )
 	{
-		SDL_DisplayMode mode;
+		SDL_DisplayMode *mode = modes[i];
 
-		if( SDL_GetDisplayMode( r_displayIndex->integer, i, &mode ) < 0 )
-			continue;
+		if (!mode) continue;
 
-		if( !mode.w || !mode.h )
+		if( !mode->w || !mode->h )
 		{
 			ri.Printf(PRINT_ALL,  " Display supports any resolution\n" );
 			SDL_free( modes );
 			return;
 		}
 
-		if( windowMode.format != mode.format )
+		if( windowMode.format != mode->format )
 			continue;
 
 		// SDL can give the same resolution with different refresh rates.
 		// Only list resolution once.
 		for( j = 0; j < numModes; j++ )
 		{
-			if( (mode.w == modes[ j ].w) && (mode.h == modes[ j ].h) )
+			if( (mode->w == resolution_modes[ j ].w) && (mode->h == resolution_modes[ j ].h) )
 				break;
 		}
 
 		if( j != numModes )
 			continue;
 
-		modes[ numModes ].w = mode.w;
-		modes[ numModes ].h = mode.h;
+		resolution_modes[ numModes ].w = mode->w;
+		resolution_modes[ numModes ].h = mode->h;
 		numModes++;
 	}
 
 	for( i = 0; i < numModes; i++ )
 	{
-		const char *newModeString = va( "%ux%u ", modes[ i ].w, modes[ i ].h );
+		const char *newModeString = va( "%ux%u ", resolution_modes[ i ].w, resolution_modes[ i ].h );
 
 		if( strlen( newModeString ) < (int)sizeof( buf ) - strlen( buf ) )
 			Q_strcat( buf, sizeof( buf ), newModeString );
 		else
-			ri.Printf(PRINT_ALL,  " Skipping mode %ux%u, buffer too small\n", modes[ i ].w, modes[ i ].h );
+			ri.Printf(PRINT_ALL,  " Skipping mode %ux%u, buffer too small\n", resolution_modes[ i ].w, resolution_modes[ i ].h );
 	}
 
 	if( *buf )
@@ -133,14 +139,15 @@ static void VKimp_DetectAvailableModes(void)
 		ri.Cvar_Set( "r_availableModes", buf );
 	}
 	SDL_free( modes );
+	SDL_free( resolution_modes );
 }
 
 
 static int VKimp_SetMode(int mode, qboolean fullscreen)
 {
-	SDL_DisplayMode desktopMode;
+	int dummy = 0;
 
-	Uint32 flags = SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN;
+	Uint32 flags = SDL_WINDOW_VULKAN;
 
 	if ( r_allowResize->integer )
 		flags |= SDL_WINDOW_RESIZABLE;
@@ -148,30 +155,30 @@ static int VKimp_SetMode(int mode, qboolean fullscreen)
 
 	ri.Printf(PRINT_ALL,  "\n...VKimp_SetMode()...\n");
 
-    SDL_GetNumVideoDisplays();
+	if (r_displayIndex->integer == 0 || !window_sdl) {
+		if (!window_sdl) {
+			// Create a temporary window we could use to determine current display
+			// index. Useful for systems with multiple displays.
+			window_sdl = SDL_CreateWindow(
+					CLIENT_WINDOW_TITLE,
+					640,
+					480,
+					flags );
+		}
 
-	int display_mode_count = SDL_GetNumDisplayModes(r_displayIndex->integer);
-	if (display_mode_count < 1)
-	{
-		ri.Printf(PRINT_ALL, " SDL_GetNumDisplayModes failed: %s", SDL_GetError());
+		r_displayIndex->integer = SDL_GetDisplayForWindow( window_sdl );
+		if( r_displayIndex->integer <= 0 )
+		{
+			ri.Printf(PRINT_ALL, "SDL_GetDisplayForWindow() failed: %s\n", SDL_GetError() );
+			return -1;
+		}
 	}
 
+	const SDL_DisplayMode *desktopMode = SDL_GetDesktopDisplayMode(r_displayIndex->integer);
 
-    int tmp = SDL_GetDesktopDisplayMode(r_displayIndex->integer, &desktopMode);
-	if( (tmp == 0) && (desktopMode.h > 0) )
-    {
-    	Uint32 f = desktopMode.format;
-        ri.Printf(PRINT_ALL, " bpp %i\t%s\t%i x %i, refresh_rate: %dHz\n", SDL_BITSPERPIXEL(f), SDL_GetPixelFormatName(f), desktopMode.w, desktopMode.h, desktopMode.refresh_rate);
-    }
-    else if (SDL_GetDisplayMode(r_displayIndex->integer, 0, &desktopMode) != 0)
-	{
-    	//mode = 0: use the first display mode SDL return;
-        ri.Printf(PRINT_ALL," SDL_GetDisplayMode failed: %s\n", SDL_GetError());
-        mode = 3;
-        desktopMode.w = 640;
-        desktopMode.h = 480;
-        desktopMode.refresh_rate = 60;
-        fullscreen = 0;
+	if (!desktopMode) {
+		ri.Printf(ERR_FATAL, "Fatal: unable to get desktop mode for display %i, error: %s\n", r_displayIndex->integer, SDL_GetError());
+		return -1;
 	}
 
     if(fullscreen)
@@ -183,9 +190,7 @@ static int VKimp_SetMode(int mode, qboolean fullscreen)
 		flags |= SDL_WINDOW_BORDERLESS;
     }
 
-    R_SetWinMode( mode, desktopMode.w, desktopMode.h, desktopMode.refresh_rate );
-    
-
+    R_SetWinMode( mode, desktopMode->w, desktopMode->h, desktopMode->refresh_rate );
 
     if( window_sdl != NULL )
 	{
@@ -200,12 +205,10 @@ static int VKimp_SetMode(int mode, qboolean fullscreen)
 
     R_GetWinResolution(&width, &height);
 
-	window_sdl = SDL_CreateWindow( 
-					CLIENT_WINDOW_TITLE, 
-					SDL_WINDOWPOS_CENTERED,
-					SDL_WINDOWPOS_CENTERED, 
-					width, 
-					height, 
+	window_sdl = SDL_CreateWindow(
+					CLIENT_WINDOW_TITLE,
+					width,
+					height,
 					flags );
 
 
@@ -228,26 +231,14 @@ void vk_createWindow(void)
 {
 	ri.Printf(PRINT_ALL, "\n...Creating window (using SDL2)...\n");
 
-	// Print SDL2 Version ....
-	SDL_version v;
-	SDL_version *sdl_version = &v;
-	SDL_GetVersion(&v);
-	ri.Printf(PRINT_ALL, " Found SDL version %i.%i.%i\n",
-		sdl_version->major,sdl_version->minor,sdl_version->patch);
-
 	r_displayIndex = ri.Cvar_Get( "r_displayIndex", "0", CVAR_ARCHIVE | CVAR_LATCH );
 
-	SDL_Surface* icon = SDL_CreateRGBSurfaceFrom(
-			(void *)CLIENT_WINDOW_ICON.pixel_data,
+	SDL_Surface* icon = SDL_CreateSurfaceFrom(
 			CLIENT_WINDOW_ICON.width,
 			CLIENT_WINDOW_ICON.height,
-			CLIENT_WINDOW_ICON.bytes_per_pixel * 8,
-			CLIENT_WINDOW_ICON.bytes_per_pixel * CLIENT_WINDOW_ICON.width,
-#ifdef Q3_LITTLE_ENDIAN
-            0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000
-#else
-			0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF
-#endif
+			SDL_PIXELFORMAT_XRGB8888,
+			(void *)CLIENT_WINDOW_ICON.pixel_data,
+			CLIENT_WINDOW_ICON.bytes_per_pixel * CLIENT_WINDOW_ICON.width
 			);
 
 	if (icon == NULL)
@@ -270,7 +261,7 @@ void vk_createWindow(void)
 	{
 		ri.Printf(PRINT_ALL, " Video is not initialized before, so initial it.\n");
 
-		if (SDL_Init(SDL_INIT_VIDEO) != 0)
+		if (!SDL_Init(SDL_INIT_VIDEO))
 		{
 			ri.Printf(PRINT_ALL, " SDL_Init( SDL_INIT_VIDEO ) FAILED (%s)\n", SDL_GetError());
 		}
@@ -308,7 +299,7 @@ success:
 
 	SDL_SetWindowIcon( window_sdl, icon );
 
-	SDL_FreeSurface( icon );
+	SDL_DestroySurface( icon );
 
 	// This depends on SDL_INIT_VIDEO, hence having it here
 	ri.IN_Init(window_sdl);
@@ -318,9 +309,9 @@ success:
 void vk_getInstanceProcAddrImpl(void)
 {
 	ri.Printf(PRINT_ALL, " *** Vulkan Initialization ***\n");
-    int code = SDL_Vulkan_LoadLibrary(NULL);
-    if (code) {
-        ri.Error(ERR_FATAL, "Failed to load Vulkan library (code %d): %s", code, SDL_GetError());
+
+    if (!SDL_Vulkan_LoadLibrary(NULL)) {
+        ri.Error(ERR_FATAL, "Failed to load Vulkan library: %s", SDL_GetError());
     }
     // Create the window 
 
@@ -350,7 +341,7 @@ void vk_createSurfaceImpl(void)
 {
     ri.Printf(PRINT_ALL, " Create Surface: vk.surface.\n");
 
-    if(!SDL_Vulkan_CreateSurface(window_sdl, vk.instance, &vk.surface))
+    if(!SDL_Vulkan_CreateSurface(window_sdl, vk.instance, NULL, &vk.surface))
     {
         vk.surface = VK_NULL_HANDLE;
         ri.Error(ERR_FATAL, "SDL_Vulkan_CreateSurface(): %s\n", SDL_GetError());

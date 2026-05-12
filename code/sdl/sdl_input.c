@@ -1150,33 +1150,9 @@ static void IN_ProcessEvents( void )
 					width = e.window.data1;
 					height = e.window.data2;
 
-							// ignore this event on fullscreen
-							if( cls.glconfig.isFullscreen )
-							{
-								break;
-							}
-
-							// check if size actually changed
-							if( cls.glconfig.vidWidth == width && cls.glconfig.vidHeight == height )
-							{
-								break;
-							}
-
-							if ( Cvar_Get("r_mode", "0", 0)->integer != -1 ) {
-								break;
-							}
-
-							SDL_SetWindowSize(SDL_window, Cvar_Get("r_customwidth", "640", 0)->integer, Cvar_Get("r_customheight", "480", 0)->integer);
-
-							// Cvar_SetValue( "r_customwidth", width );
-							// Cvar_SetValue( "r_customheight", height );
-							// Cvar_Set( "r_mode", "-1" );
-
-							// Wait until user stops dragging for 1 second, so
-							// we aren't constantly recreating the GL context while
-							// he tries to drag...
-							// vidRestartTime = Sys_Milliseconds( ) + 1000;
-						}
+					// ignore this event on fullscreen
+					if( cls.glconfig.isFullscreen )
+					{
 						break;
 					}
 
@@ -1186,14 +1162,20 @@ static void IN_ProcessEvents( void )
 						break;
 					}
 
-					Cvar_SetValue( "r_customwidth", width );
-					Cvar_SetValue( "r_customheight", height );
-					Cvar_Set( "r_mode", "-1" );
+					if ( Cvar_Get("r_mode", "0", 0)->integer != -1 ) {
+						break;
+					}
+
+					SDL_SetWindowSize(SDL_window, Cvar_Get("r_customwidth", "640", 0)->integer, Cvar_Get("r_customheight", "480", 0)->integer);
+
+					// Cvar_SetValue( "r_customwidth", width );
+					// Cvar_SetValue( "r_customheight", height );
+					// Cvar_Set( "r_mode", "-1" );
 
 					// Wait until user stops dragging for 1 second, so
 					// we aren't constantly recreating the GL context while
-					// they try to drag...
-					vidRestartTime = Sys_Milliseconds( ) + 1000;
+					// he tries to drag...
+					// vidRestartTime = Sys_Milliseconds( ) + 1000;
 				}
 				break;
 

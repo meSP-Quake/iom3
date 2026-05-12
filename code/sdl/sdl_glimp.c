@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
+#include <SDL3/SDL_video.h>
 #ifdef USE_INTERNAL_SDL_HEADERS
 #	include "SDL3/SDL.h"
 #else
@@ -697,6 +698,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 		if( !r_allowSoftwareGL->integer )
 			SDL_GL_SetAttribute( SDL_GL_ACCELERATED_VISUAL, 1 );
 #endif
+		}
 
 		for ( type = 0; type < numContexts; type++ ) {
 			char contextName[32];
@@ -721,7 +723,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 			SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, contexts[type].majorVersion );
 			SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, contexts[type].minorVersion );
 
-			if( ( SDL_window = SDL_CreateWindow( CLIENT_WINDOW_TITLE, x, y,
+			if( ( SDL_window = SDL_CreateWindow( CLIENT_WINDOW_TITLE,
 					glConfig.vidWidth, glConfig.vidHeight, flags ) ) == NULL )
 			{
 				ri.Printf( PRINT_DEVELOPER, "SDL_CreateWindow failed: %s\n", SDL_GetError( ) );
@@ -741,7 +743,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 			{
 				ri.Printf( PRINT_ALL, "GLimp_GetProcAddresses() for %s context failed\n", contextName );
 				GLimp_ClearProcAddresses();
-				SDL_GL_DeleteContext( SDL_glContext );
+				SDL_GL_DestroyContext( SDL_glContext );
 				SDL_glContext = NULL;
 				SDL_DestroyWindow( SDL_window );
 				SDL_window = NULL;
@@ -758,7 +760,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 					ri.Printf( PRINT_ALL, "GL_RENDERER is %s, rejecting %s context\n", renderer, contextName );
 
 					GLimp_ClearProcAddresses();
-					SDL_GL_DeleteContext( SDL_glContext );
+					SDL_GL_DestroyContext( SDL_glContext );
 					SDL_glContext = NULL;
 					SDL_DestroyWindow( SDL_window );
 					SDL_window = NULL;
@@ -793,7 +795,6 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 			desiredMode.w = glConfig.vidWidth;
 			desiredMode.h = glConfig.vidHeight;
 			desiredMode.refresh_rate = glConfig.displayFrequency = ri.Cvar_VariableIntegerValue( "r_displayRefresh" );
-			desiredMode.driverdata = NULL;
 
 			if( !SDL_SetWindowFullscreenMode( SDL_window, &desiredMode ) )
 			{

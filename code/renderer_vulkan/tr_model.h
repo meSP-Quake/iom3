@@ -33,6 +33,7 @@ typedef struct model_s {
 void        R_ModelInit( void );
 model_t*    R_GetModelByHandle( qhandle_t hModel );
 void        R_Modellist_f( void );
+void        R_ModeList_f( void );
 
 //====================================================
 

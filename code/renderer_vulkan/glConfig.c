@@ -76,18 +76,18 @@ void R_DisplayResolutionList_f( void )
 void R_SetWinMode(int mode, unsigned int width, unsigned int height, unsigned int hz)
 {
 	
-    if ( mode < -2 || mode >= s_numVidModes) {
+    if ( mode < -3 || mode >= s_numVidModes) {
          mode = 3;
 	}
 
-	if (mode == -2)
+    if (mode == -2 || mode == -3)
 	{
         // use desktop video resolution
         glConfig.vidWidth = width;
         glConfig.vidHeight = height;
         glConfig.windowAspect = (float)width / (float)height;
         glConfig.displayFrequency = hz;
-        glConfig.isFullscreen = 1;
+        glConfig.isFullscreen = mode == -2;
     }
 	else if ( mode == -1 )
     {

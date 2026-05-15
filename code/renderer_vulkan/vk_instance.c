@@ -254,16 +254,16 @@ static void vk_createInstance(void)
     instanceCreateInfo.enabledExtensionCount = nInsExt;
 	instanceCreateInfo.ppEnabledExtensionNames = ppInstanceExt;
 
-#ifndef NDEBUG
-    ri.Printf(PRINT_ALL, "Using VK_LAYER_KHRONOS_validation\n");
+// #ifndef NDEBUG
+//     ri.Printf(PRINT_ALL, "Using VK_LAYER_KHRONOS_validation\n");
 
-    const char* const validation_layer_name = "VK_LAYER_KHRONOS_validation";
-    instanceCreateInfo.enabledLayerCount = 1;
-	instanceCreateInfo.ppEnabledLayerNames = &validation_layer_name;
-#else
+//     const char* const validation_layer_name = "VK_LAYER_KHRONOS_validation";
+//     instanceCreateInfo.enabledLayerCount = 1;
+// 	instanceCreateInfo.ppEnabledLayerNames = &validation_layer_name;
+// #else
     instanceCreateInfo.enabledLayerCount = 0;
 	instanceCreateInfo.ppEnabledLayerNames = NULL;
-#endif
+// #endif
 
 
     VkResult e = qvkCreateInstance(&instanceCreateInfo, NULL, &vk.instance);

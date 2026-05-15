@@ -424,125 +424,124 @@ void vk_destroyFrameBuffers(void)
 
 void vk_begin_frame(void)
 {
-  
-    // An application can acquire use of a presentable image with vkAcquireNextImageKHR. 
-    // After acquiring a presentable image and before modifying it, the application must
-    // use a synchronization primitive to ensure that the presentation engine has 
-    // finished reading from the image. The application can then transition the image's
-    // layout, queue rendering commands to it, etc. Finally, the application presents 
-    // the image with vkQueuePresentKHR, which releases the acquisition of the image.
+	// An application can acquire use of a presentable image with vkAcquireNextImageKHR. 
+	// After acquiring a presentable image and before modifying it, the application must
+	// use a synchronization primitive to ensure that the presentation engine has 
+	// finished reading from the image. The application can then transition the image's
+	// layout, queue rendering commands to it, etc. Finally, the application presents 
+	// the image with vkQueuePresentKHR, which releases the acquisition of the image.
 
-    // To acquire an available presentable image to use, and retrieve the index of 
-    // that image If timeout is UINT64_MAX, the timeout period is treated as infinite,
-    // and vkAcquireNextImageKHR will block until an image is acquired or an error occurs.
-    
-    // An application must wait until either the semaphore or fence is signaled
-    // before accessing the image's data.
-    //
-    // VK_SUBOPTIMAL_KHR is a success code, meaning the swapchain can still be
-    // used to present but the surface properties no longer match exactly.
-    // This commonly happens on Wayland when the window is resized.
-    {
-        VkResult result = qvkAcquireNextImageKHR(vk.device, vk.swapchain, UINT64_MAX,
-            sema_imageAvailable, VK_NULL_HANDLE, &vk.idx_swapchain_image);
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_ERROR_SURFACE_LOST_KHR)
-        {
-            qvkDeviceWaitIdle(vk.device);
-            vk_recreateSwapChain();
-            result = qvkAcquireNextImageKHR(vk.device, vk.swapchain, UINT64_MAX,
-                sema_imageAvailable, VK_NULL_HANDLE, &vk.idx_swapchain_image);
-        }
-        // VK_SUBOPTIMAL_KHR is acceptable - swapchain is still usable
-        if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-        {
-            ri.Printf(PRINT_ALL, "Vulkan: error %s returned by qvkAcquireNextImageKHR\n",
-                cvtResToStr(result));
-        }
-    }
+	// To acquire an available presentable image to use, and retrieve the index of 
+	// that image If timeout is UINT64_MAX, the timeout period is treated as infinite,
+	// and vkAcquireNextImageKHR will block until an image is acquired or an error occurs.
+	
+	// An application must wait until either the semaphore or fence is signaled
+	// before accessing the image's data.
+	//
+	// VK_SUBOPTIMAL_KHR is a success code, meaning the swapchain can still be
+	// used to present but the surface properties no longer match exactly.
+	// This commonly happens on Wayland when the window is resized.
+	for (int i = 0; i < 2; ++i) {
+		VkResult result = qvkAcquireNextImageKHR(vk.device, vk.swapchain, UINT64_MAX,
+				sema_imageAvailable, VK_NULL_HANDLE, &vk.idx_swapchain_image);
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_ERROR_SURFACE_LOST_KHR)
+		{
+			qvkDeviceWaitIdle(vk.device);
 
+			ri.Printf(PRINT_WARNING, "vk_begin_frame(): qvkAcquireNextImageKHR returned %s, recreating swapchain...\n", cvtResToStr(result));
 
-    //  User could call method vkWaitForFences to wait for completion. A fence is a 
-    //  very heavyweight synchronization primitive as it requires the GPU to flush
-    //  all caches at least, and potentially some additional synchronization. Due to
-    //  those costs, fences should be used sparingly. In particular, try to group
-    //  per-frame resources and track them together. To wait for one or more fences
-    //  to enter the signaled state on the host, call qvkWaitForFences.
+			vk_recreateSwapChain();
+			continue;
+		}
+		// VK_SUBOPTIMAL_KHR is acceptable - swapchain is still usable
+		if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+		{
+			ri.Printf(PRINT_ALL, "Vulkan: error %s returned by qvkAcquireNextImageKHR\n",
+					cvtResToStr(result));
+			continue;
+		}
 
-    //  If the condition is satisfied when vkWaitForFences is called, then 
-    //  vkWaitForFences returns immediately. If the condition is not satisfied at 
-    //  the time vkWaitForFences is called, then vkWaitForFences will block and 
-    //  wait up to timeout nanoseconds for the condition to become satisfied.
+		break;
+	}
+
+	//  User could call method vkWaitForFences to wait for completion. A fence is a 
+	//  very heavyweight synchronization primitive as it requires the GPU to flush
+	//  all caches at least, and potentially some additional synchronization. Due to
+	//  those costs, fences should be used sparingly. In particular, try to group
+	//  per-frame resources and track them together. To wait for one or more fences
+	//  to enter the signaled state on the host, call qvkWaitForFences.
+
+	//  If the condition is satisfied when vkWaitForFences is called, then 
+	//  vkWaitForFences returns immediately. If the condition is not satisfied at 
+	//  the time vkWaitForFences is called, then vkWaitForFences will block and 
+	//  wait up to timeout nanoseconds for the condition to become satisfied.
 
 	VK_CHECK(qvkWaitForFences(vk.device, 1, &fence_renderFinished, VK_FALSE, 1e9));
  
-    //  To set the state of fences to unsignaled from the host
-    //  "1" is the number of fences to reset. 
-    //  "fence_renderFinished" is the fence handle to reset.
+	//  To set the state of fences to unsignaled from the host
+	//  "1" is the number of fences to reset. 
+	//  "fence_renderFinished" is the fence handle to reset.
 	VK_CHECK(qvkResetFences(vk.device, 1, &fence_renderFinished));
 
-    //  commandBuffer must not be in the recording or pending state.
-    
-    // begin_info is an instance of the VkCommandBufferBeginInfo structure,
-    // which defines additional information about how the command buffer 
-    // begins recording.
+	//  commandBuffer must not be in the recording or pending state.
+	
+	// begin_info is an instance of the VkCommandBufferBeginInfo structure,
+	// which defines additional information about how the command buffer 
+	// begins recording.
 	VkCommandBufferBeginInfo begin_info;
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	begin_info.pNext = NULL;
-    // VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT specifies that
-    // each recording of the command buffer will only be submitted
-    // once, and the command buffer will be reset and recorded again
-    // between each submission.
+
+	// VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT specifies that
+	// each recording of the command buffer will only be submitted
+	// once, and the command buffer will be reset and recorded again
+	// between each submission.
 	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	begin_info.pInheritanceInfo = NULL;
 
-    // To begin recording a command buffer
+	// To begin recording a command buffer
 	VK_CHECK(qvkBeginCommandBuffer(vk.command_buffer, &begin_info));
 
 	// Ensure visibility of geometry buffers writes.
+	{
+		// vkCmdPipelineBarrier is a synchronization command that inserts 
+		// a dependency between commands submitted to the same queue, or 
+		// between commands in the same subpass. When vkCmdPipelineBarrier
+		// is submitted to a queue, it defines a memory dependency between
+		// commands that were submitted before it, and those submitted
+		// after it.
+		VkBufferMemoryBarrier barrier;
+		barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+		barrier.pNext = NULL;
+		barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.buffer = vk_getIndexBuffer();
+		barrier.offset = 0;
+		barrier.size = VK_WHOLE_SIZE;
 
+		// If vkCmdPipelineBarrier was recorded outside a render pass instance, 
+		// the first synchronization scope includes all commands that occur earlier
+		// in submission order. The second synchronization scope includes all
+		// commands that occur later in submission order.  
+		//
 
-{
+		// VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT specifies read access 
+		// to a vertex buffer as part of a drawing command, bound by
+		// vkCmdBindVertexBuffers.
+		barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
 
-    // vkCmdPipelineBarrier is a synchronization command that inserts 
-    // a dependency between commands submitted to the same queue, or 
-    // between commands in the same subpass. When vkCmdPipelineBarrier
-    // is submitted to a queue, it defines a memory dependency between
-    // commands that were submitted before it, and those submitted
-    // after it.
-	VkBufferMemoryBarrier barrier;
-	barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-	barrier.pNext = NULL;
-	barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.buffer = vk_getIndexBuffer();
-	barrier.offset = 0;
-	barrier.size = VK_WHOLE_SIZE;
+		// To record a pipeline barrier
+		qvkCmdPipelineBarrier(vk.command_buffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, NULL, 1, &barrier, 0, NULL);
 
-    // If vkCmdPipelineBarrier was recorded outside a render pass instance, 
-    // the first synchronization scope includes all commands that occur earlier
-    // in submission order. The second synchronization scope includes all
-    // commands that occur later in submission order.  
-    //
-    
-    // VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT specifies read access 
-    // to a vertex buffer as part of a drawing command, bound by
-    // vkCmdBindVertexBuffers.
-	barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-	
-    // To record a pipeline barrier
-    qvkCmdPipelineBarrier(vk.command_buffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, NULL, 1, &barrier, 0, NULL);
-
-    // VK_ACCESS_INDEX_READ_BIT specifies read access to an index buffer 
-    // as part of an indexed drawing command, bound by vkCmdBindIndexBuffer.
-    barrier.dstAccessMask = VK_ACCESS_INDEX_READ_BIT;
-    qvkCmdPipelineBarrier(vk.command_buffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, NULL, 1, &barrier, 0, NULL);
-
-}
-
+		// VK_ACCESS_INDEX_READ_BIT specifies read access to an index buffer 
+		// as part of an indexed drawing command, bound by vkCmdBindIndexBuffer.
+		barrier.dstAccessMask = VK_ACCESS_INDEX_READ_BIT;
+		qvkCmdPipelineBarrier(vk.command_buffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, NULL, 1, &barrier, 0, NULL);
+	}
 
 	// Begin render pass.
-	VkClearValue clear_values[2];
+	static VkClearValue clear_values[2];
 	/// ignore clear_values[0] which corresponds to color attachment
 	clear_values[1].depthStencil.depth = 1.0;
 	clear_values[1].depthStencil.stencil = 0;
@@ -553,26 +552,23 @@ void vk_begin_frame(void)
 	renderPass_beginInfo.renderPass = vk.render_pass;
 	renderPass_beginInfo.framebuffer = vk.framebuffers[vk.idx_swapchain_image];
 
-    renderPass_beginInfo.renderArea = get_scissor_rect();
+	renderPass_beginInfo.renderArea = get_scissor_rect();
 
-    renderPass_beginInfo.clearValueCount = 2;
+	renderPass_beginInfo.clearValueCount = 2;
 	renderPass_beginInfo.pClearValues = clear_values;
 
 	qvkCmdBeginRenderPass(vk.command_buffer, &renderPass_beginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
 }
 
 
 void vk_end_frame(void)
 {
 	qvkCmdEndRenderPass(vk.command_buffer);
-	
-    VK_CHECK(qvkEndCommandBuffer(vk.command_buffer));
-
+	VK_CHECK(qvkEndCommandBuffer(vk.command_buffer));
 
 	VkPipelineStageFlags wait_dst_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    
-    // Queue submission and synchronization
+
+	// Queue submission and synchronization
 	VkSubmitInfo submit_info;
 	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submit_info.pNext = NULL;
@@ -582,90 +578,93 @@ void vk_end_frame(void)
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &vk.command_buffer;
 	submit_info.signalSemaphoreCount = 1;
-    // specify which semaphones to signal once the command buffers
-    // have finished execution
+	// specify which semaphones to signal once the command buffers
+	// have finished execution
 	submit_info.pSignalSemaphores = &sema_renderFinished;
 
 
-    //  queue is the queue that the command buffers will be submitted to.
-    //  1 is the number of elements in the pSubmits array.
-    //  pSubmits is a pointer to an array of VkSubmitInfo structures,
-    //  each specifying a command buffer submission batch.
-    //
-    //  fence_renderFinished is an optional handle to a fence to be signaled 
-    //  once all submitted command buffers have completed execution. 
-    //  If fence is not VK_NULL_HANDLE, it defines a fence signal operation.
-    //
-    //  Submission can be a high overhead operation, and applications should 
-    //  attempt to batch work together into as few calls to vkQueueSubmit as possible.
-    //
-    //  vkQueueSubmit is a queue submission command, with each batch defined
-    //  by an element of pSubmits as an instance of the VkSubmitInfo structure.
-    //  Batches begin execution in the order they appear in pSubmits, but may
-    //  complete out of order.
-    //
-    //  Fence and semaphore operations submitted with vkQueueSubmit 
-    //  have additional ordering constraints compared to other 
-    //  submission commands, with dependencies involving previous and
-    //  subsequent queue operations. 
-    //
-    //  The order that batches appear in pSubmits is used to determine
-    //  submission order, and thus all the implicit ordering guarantees
-    //  that respect it. Other than these implicit ordering guarantees
-    //  and any explicit synchronization primitives, these batches may
-    //  overlap or otherwise execute out of order. If any command buffer
-    //  submitted to this queue is in the executable state, it is moved
-    //  to the pending state. Once execution of all submissions of a 
-    //  command buffer complete, it moves from the pending state,
-    //  back to the executable state.
-    //
-    //  If a command buffer was recorded with the 
-    //  VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT flag,
-    //  it instead moves back to the invalid state.
-       
-    //  To submit command buffers to a queue 
-    
-    VK_CHECK(qvkQueueSubmit(vk.queue, 1, &submit_info, fence_renderFinished));
+	//  queue is the queue that the command buffers will be submitted to.
+	//  1 is the number of elements in the pSubmits array.
+	//  pSubmits is a pointer to an array of VkSubmitInfo structures,
+	//  each specifying a command buffer submission batch.
+	//
+	//  fence_renderFinished is an optional handle to a fence to be signaled 
+	//  once all submitted command buffers have completed execution. 
+	//  If fence is not VK_NULL_HANDLE, it defines a fence signal operation.
+	//
+	//  Submission can be a high overhead operation, and applications should 
+	//  attempt to batch work together into as few calls to vkQueueSubmit as possible.
+	//
+	//  vkQueueSubmit is a queue submission command, with each batch defined
+	//  by an element of pSubmits as an instance of the VkSubmitInfo structure.
+	//  Batches begin execution in the order they appear in pSubmits, but may
+	//  complete out of order.
+	//
+	//  Fence and semaphore operations submitted with vkQueueSubmit 
+	//  have additional ordering constraints compared to other 
+	//  submission commands, with dependencies involving previous and
+	//  subsequent queue operations. 
+	//
+	//  The order that batches appear in pSubmits is used to determine
+	//  submission order, and thus all the implicit ordering guarantees
+	//  that respect it. Other than these implicit ordering guarantees
+	//  and any explicit synchronization primitives, these batches may
+	//  overlap or otherwise execute out of order. If any command buffer
+	//  submitted to this queue is in the executable state, it is moved
+	//  to the pending state. Once execution of all submissions of a 
+	//  command buffer complete, it moves from the pending state,
+	//  back to the executable state.
+	//
+	//  If a command buffer was recorded with the 
+	//  VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT flag,
+	//  it instead moves back to the invalid state.
 
-    VkPresentInfoKHR present_info;
+	//  To submit command buffers to a queue 
+
+	VK_CHECK(qvkQueueSubmit(vk.queue, 1, &submit_info, fence_renderFinished));
+
+	VkPresentInfoKHR present_info;
 	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	present_info.pNext = NULL;
 	present_info.waitSemaphoreCount = 1;
 	present_info.pWaitSemaphores = &sema_renderFinished;
 
-    // specify the swap chains to present images to
+	// specify the swap chains to present images to
 	present_info.swapchainCount = 1;
 	present_info.pSwapchains = &vk.swapchain;
-    // specify the index of the image for each swap chain
+	// specify the index of the image for each swap chain
 	present_info.pImageIndices = &vk.idx_swapchain_image;
 	present_info.pResults = NULL;
 
-    // Each element of pSwapchains member of pPresentInfo must be a 
-    // swapchain that is created for a surface for which presentation
-    // is supported from queue as determined using a call to 
-    // vkGetPhysicalDeviceSurfaceSupportKHR
+	// Each element of pSwapchains member of pPresentInfo must be a 
+	// swapchain that is created for a surface for which presentation
+	// is supported from queue as determined using a call to 
+	// vkGetPhysicalDeviceSurfaceSupportKHR
 
-    
-    // After queueing all rendering commands and transitioning the
-    // image to the correct layout, to queue an image for presentation.
-    // queue is a queue that is capable of presentation to the target 
-    // surface's platform on the same device as the image's swapchain.
-    VkResult result = qvkQueuePresentKHR(vk.queue, &present_info);
-    // VK_SUCCESS and VK_SUBOPTIMAL_KHR are both acceptable results.
-    // VK_SUBOPTIMAL_KHR means the swapchain can still be used but doesn't
-    // match the surface properties exactly (common on Wayland).
-    if(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR)
-    {
-        return;
-    }
-    else if( (result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_ERROR_SURFACE_LOST_KHR))
-    {
-        // we first call vkDeviceWaitIdle because we 
-        // shouldn't touch resources that still be in use
-        qvkDeviceWaitIdle(vk.device);
-        // recreate the objects that depend on the swap chain and the window size
+	// After queueing all rendering commands and transitioning the
+	// image to the correct layout, to queue an image for presentation.
+	// queue is a queue that is capable of presentation to the target 
+	// surface's platform on the same device as the image's swapchain.
+	VkResult result = qvkQueuePresentKHR(vk.queue, &present_info);
 
-        vk_recreateSwapChain();
-    }
+	// VK_SUCCESS and VK_SUBOPTIMAL_KHR are both acceptable results.
+	// VK_SUBOPTIMAL_KHR means the swapchain can still be used but doesn't
+	// match the surface properties exactly (common on Wayland).
+	if(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR)
+	{
+		return;
+	}
+
+	if( (result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_ERROR_SURFACE_LOST_KHR))
+	{
+		// we first call vkDeviceWaitIdle because we 
+		// shouldn't touch resources that still be in use
+		qvkDeviceWaitIdle(vk.device);
+		// recreate the objects that depend on the swap chain and the window size
+
+		ri.Printf(PRINT_WARNING, "vk_end_frame(): qvkQueuePresentKHR returned %s, recreating swapchain...\n", cvtResToStr(result));
+
+		vk_recreateSwapChain();
+	}
 }
 

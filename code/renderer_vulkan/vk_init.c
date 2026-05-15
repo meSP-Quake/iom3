@@ -8,6 +8,7 @@
 #include "vk_shaders.h"
 #include "glConfig.h"
 #include "tr_backend.h"
+#include "vulkan/vulkan_core.h"
 
 // vk_init have nothing to do with tr_init
 // vk_instance should be small
@@ -19,19 +20,19 @@ void vk_initialize(void)
     vk_createWindow();
 
     vk_getProcAddress(); 
- 
-	// Swapchain. vk.physical_device required to be init. 
-	vk_createSwapChain(vk.device, vk.surface, vk.surface_format);
 
-	// Sync primitives.
+    // Swapchain. vk.physical_device required to be init. 
+    vk_createSwapChain(vk.device, vk.surface, vk.surface_format, VK_NULL_HANDLE);
+
+    // Sync primitives.
     vk_create_sync_primitives();
 
-	// we have to create a command pool before we can create command buffers
+    // we have to create a command pool before we can create command buffers
     // command pools manage the memory that is used to store the buffers and
     // command buffers are allocated from them.
     ri.Printf(PRINT_ALL, " Create command pool: vk.command_pool \n");
     vk_create_command_pool(&vk.command_pool);
-    
+
     ri.Printf(PRINT_ALL, " Create command buffer: vk.command_buffer \n");
     vk_create_command_buffer(vk.command_pool, &vk.command_buffer);
 
@@ -49,27 +50,27 @@ void vk_initialize(void)
 
     vk_createFrameBuffers(width, height);
 
-	// Pipeline layout.
-	// You can use uniform values in shaders, which are globals similar to
+    // Pipeline layout.
+    // You can use uniform values in shaders, which are globals similar to
     // dynamic state variables that can be changes at the drawing time to
     // alter the behavior of your shaders without having to recreate them.
     // They are commonly used to create texture samplers in the fragment 
     // shader. The uniform values need to be specified during pipeline
     // creation by creating a VkPipelineLayout object.
-    
+
     vk_createPipelineLayout();
 
-	//
-	vk_createVertexBuffer();
+    //
+    vk_createVertexBuffer();
     vk_createIndexBuffer();;
-	//
-	// Shader modules.
-	//
-	vk_loadShaderModules();
+    //
+    // Shader modules.
+    //
+    vk_loadShaderModules();
 
-	//
-	// Standard pipelines.
-	//
+    //
+    // Standard pipelines.
+    //
     create_standard_pipelines();
 
     vk.isInitialized = VK_TRUE;

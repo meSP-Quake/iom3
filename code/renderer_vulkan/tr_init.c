@@ -157,9 +157,8 @@ void RE_Shutdown( qboolean destroyWindow )
 	ri.Cmd_RemoveCommand("screenshot");
 	ri.Cmd_RemoveCommand("shaderlist");
 	ri.Cmd_RemoveCommand("skinlist");
-
-    ri.Cmd_RemoveCommand("minimize");
-	
+	ri.Cmd_RemoveCommand("minimize");
+	ri.Cmd_RemoveCommand( "modelist" );
 	ri.Cmd_RemoveCommand("vkinfo");
     ri.Cmd_RemoveCommand("pipelineList");
     ri.Cmd_RemoveCommand("gpuMem");

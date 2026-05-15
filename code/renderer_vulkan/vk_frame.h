@@ -8,7 +8,7 @@ void vk_end_frame(void);
 void vk_createFrameBuffers(uint32_t w, uint32_t h);
 void vk_destroyFrameBuffers(void);
 
-void vk_createSwapChain(VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKHR surface_format);
+void vk_createSwapChain(VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKHR surface_format, VkSwapchainKHR oldSwapchain);
 
 void vk_create_sync_primitives(void);
 void vk_destroy_sync_primitives(void);

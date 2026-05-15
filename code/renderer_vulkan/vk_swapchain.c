@@ -1,8 +1,19 @@
 #include "ref_import.h"
+#include "tr_backend.h"
 #include "tr_cvar.h"
 #include "VKimpl.h"
+#include "tr_globals.h"
+#include "vk_image.h"
 #include "vk_instance.h"
 #include "glConfig.h"
+#include "vk_shade_geometry.h"
+#include "vk_shaders.h"
+#include "vulkan/vulkan_core.h"
+#include <SDL3/SDL_vulkan.h>
+#include "vk_frame.h"
+#include "vk_cmd.h"
+#include "vk_depth_attachment.h"
+#include "vk_pipelines.h"
 
 
 /*
@@ -33,24 +44,8 @@ vkAcquireNextImageKHR.
 // 3) Available presentation modes
 
 
-void vk_recreateSwapChain(void)
-{
-
-    ri.Printf( PRINT_ALL, " Recreate swap chain \n");
-
-    if( r_fullscreen->integer )
-    {
-        ri.Cvar_Set( "r_fullscreen", "0" );
-        r_fullscreen->modified = qtrue;
-    }
-    
-    // hasty prevent crash.
-    ri.Cmd_ExecuteText (EXEC_NOW, "vid_restart\n");
-}
-
-
 // create swap chain
-void vk_createSwapChain(VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKHR surface_format)
+void vk_createSwapChain(VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKHR surface_format, VkSwapchainKHR oldSwapchain)
 {
 
     // The presentation is arguably the most impottant setting for the swap chain
@@ -268,9 +263,13 @@ void vk_createSwapChain(VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKH
         // while your application is running, for example because the window was resized.
         // In that case the swap chain actually needs to be recreated from scratch and a
         // reference to the old one must be specified in this field.
-        desc.oldSwapchain = VK_NULL_HANDLE;
+        desc.oldSwapchain = oldSwapchain;
 
         VK_CHECK(qvkCreateSwapchainKHR(device, &desc, NULL, &vk.swapchain));
+
+        if (oldSwapchain) {
+            qvkDestroySwapchainKHR(vk.device, oldSwapchain, NULL);
+        }
     }
     
     //
@@ -308,4 +307,40 @@ void vk_createSwapChain(VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKH
             VK_CHECK(qvkCreateImageView(device, &desc, NULL, &vk.swapchain_image_views[i]));
         }
     }
+}
+
+void vk_recreateSwapChain(void)
+{
+	ri.Printf( PRINT_ALL, " Recreate swap chain \n");
+
+	vk_destroyDepthAttachment();
+
+	for (int i = 0; i < vk.swapchain_image_count; i++)
+	{
+		qvkDestroyFramebuffer(vk.device, vk.framebuffers[i], NULL);
+		qvkDestroyImageView(vk.device, vk.swapchain_image_views[i], NULL);
+	}
+
+	qvkDestroyRenderPass(vk.device, vk.render_pass, NULL);
+
+	vk_destroy_sync_primitives();
+	vk_destroy_commands();
+
+	vk_createSwapChain(vk.device, vk.surface, vk.surface_format, vk.swapchain);
+
+	vk_create_sync_primitives();
+
+	vk_create_command_pool(&vk.command_pool);
+	vk_create_command_buffer(vk.command_pool, &vk.command_buffer);
+
+	int width;
+	int height;
+
+	R_GetWinResolution(&width, &height);
+
+    backEnd.viewParms.viewportWidth = width;
+    backEnd.viewParms.viewportHeight = height;
+
+	vk_createDepthAttachment(width, height);
+	vk_createFrameBuffers(width, height);
 }

@@ -8,11 +8,9 @@
 #include "tr_cvar.h"
 #include "tr_fog.h"
 
-
 #define IMAGE_CHUNK_SIZE        (64 * 1024 * 1024)
-
-
-
+// With chunk size of 64mb, this gives 64GB max of accessible videomemory
+#define MAX_IMAGE_CHUNK_COUNT   1024
 
 struct StagingBuffer_t
 {
@@ -37,9 +35,10 @@ struct ImageChunk_t {
 
 
 struct deviceLocalMemory_t {
-    // One large device device local memory allocation, assigned to multiple images
-	struct ImageChunk_t Chunks[8];
 	uint32_t Index; // number of chunks used
+
+    // One large device device local memory allocation, assigned to multiple images
+	struct ImageChunk_t Chunks[MAX_IMAGE_CHUNK_COUNT];
 };
 
 static struct StagingBuffer_t StagBuf;
@@ -296,50 +295,58 @@ static void vk_createImageAndBindWithMemory(image_t* pImg)
     // ensure that memory region has proper alignment
     uint32_t mask = (memory_requirements.alignment - 1);
 
-
-    uint32_t i = 0;
+  uint32_t i = 0;
 	for (i = 0; i < devMemImg.Index; i++)
-    {
+	{
 		// ensure that memory region has proper alignment
 		VkDeviceSize offset_aligned = (devMemImg.Chunks[i].Used + mask) & (~mask);
-        VkDeviceSize end = offset_aligned + memory_requirements.size;
+		VkDeviceSize end = offset_aligned + memory_requirements.size;
 		if (end <= IMAGE_CHUNK_SIZE)
-        {
-            VK_CHECK(qvkBindImageMemory(vk.device, pImg->handle, 
-                        devMemImg.Chunks[i].block, offset_aligned));
+		{
+			VK_CHECK(qvkBindImageMemory(vk.device, pImg->handle, 
+			         devMemImg.Chunks[i].block, offset_aligned));
 
 			devMemImg.Chunks[i].Used = end;
 			return;
 		}
 	}
 
+	if (devMemImg.Index == MAX_IMAGE_CHUNK_COUNT) {
+		ri.Printf(
+			PRINT_ERROR,
+			"vk_createImageAndBindWithMemory() failed to allocate new image chunk: chunk limit exceeded, %iMB of videomemory consumed. "
+			"This could indicate a memory leak or a huge amount of large, high resolution images.\n",
+			MAX_IMAGE_CHUNK_COUNT * (IMAGE_CHUNK_SIZE >> 20)
+		);
+		return;
+	}
+
 	// Couldn't find suitable in existing chunk.
-    // Allocate a new chunk
-    
-    VkMemoryAllocateInfo alloc_info;
-    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    alloc_info.pNext = NULL;
-    alloc_info.allocationSize = IMAGE_CHUNK_SIZE;
-    alloc_info.memoryTypeIndex = find_memory_type(memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	// Allocate a new chunk
 
-    VkDeviceMemory memory;
-    VK_CHECK(qvkAllocateMemory(vk.device, &alloc_info, NULL, &memory));
-    VK_CHECK(qvkBindImageMemory(vk.device, pImg->handle, memory, 0));
+	VkMemoryAllocateInfo alloc_info;
+	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc_info.pNext = NULL;
+	alloc_info.allocationSize = IMAGE_CHUNK_SIZE;
+	alloc_info.memoryTypeIndex = find_memory_type(memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    devMemImg.Chunks[devMemImg.Index].block = memory;
-    devMemImg.Chunks[devMemImg.Index].Used = memory_requirements.size;
-    ++devMemImg.Index;
+	VkDeviceMemory memory;
+	VK_CHECK(qvkAllocateMemory(vk.device, &alloc_info, NULL, &memory));
+	VK_CHECK(qvkBindImageMemory(vk.device, pImg->handle, memory, 0));
 
+	devMemImg.Chunks[devMemImg.Index].block = memory;
+	devMemImg.Chunks[devMemImg.Index].Used = memory_requirements.size;
+	++devMemImg.Index;
 
-    ri.Printf(PRINT_ALL, " --- Device memory allocation --- \n");
+	ri.Printf(PRINT_ALL, " --- Device memory allocation --- \n");
 
-    ri.Printf(PRINT_ALL, "alignment: %llu, Type Index: %d. \n",
-            (unsigned long long)memory_requirements.alignment, alloc_info.memoryTypeIndex);
-    
-    ri.Printf(PRINT_ALL, "Image chuck memory consumed: %d M \n",
-            devMemImg.Index * (IMAGE_CHUNK_SIZE >> 20) );
+	ri.Printf(PRINT_ALL, "alignment: %llu, Type Index: %d. \n",
+	         (unsigned long long)memory_requirements.alignment, alloc_info.memoryTypeIndex);
+	
+	ri.Printf(PRINT_ALL, "Image chuck memory consumed: %d M \n",
+	         devMemImg.Index * (IMAGE_CHUNK_SIZE >> 20) );
 
-    ri.Printf(PRINT_ALL, " --- ------------------------ --- \n");
+	ri.Printf(PRINT_ALL, " --- ------------------------ --- \n");
 }
 
 

@@ -323,7 +323,7 @@ void ResampleTexture(unsigned char * pOut, const unsigned int inwidth, const uns
                                const unsigned char *pIn, const unsigned int outwidth, const unsigned int outheight)
 {
 	unsigned int i, j;
-	unsigned int p1[2048], p2[2048];
+	unsigned int p1[4096], p2[4096];
 
     // printf("inwidth: %d \t outwidth: %d \n", inwidth, outwidth);
 
@@ -377,7 +377,7 @@ void ResampleTexture(unsigned char * pOut, const unsigned int inwidth, const uns
 
 void GetScaledDimension(const unsigned int width, const unsigned int height, unsigned int * const outW, unsigned int * const outH, int isPicMip)
 {
-    const unsigned int max_texture_size = 2048;
+    const unsigned int max_texture_size = 4096;
     
     unsigned int scaled_width, scaled_height;
 

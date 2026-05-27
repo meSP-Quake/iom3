@@ -8,8 +8,8 @@
 #include "tr_cvar.h"
 #include "tr_fog.h"
 
-#define IMAGE_CHUNK_SIZE        (64 * 1024 * 1024)
-// With chunk size of 64mb, this gives 64GB max of accessible videomemory
+#define IMAGE_CHUNK_SIZE        (128 * 1024 * 1024)
+// With chunk size of 128mb, this gives 128GB max of accessible videomemory
 #define MAX_IMAGE_CHUNK_COUNT   1024
 
 struct StagingBuffer_t
@@ -556,7 +556,7 @@ image_t* R_CreateImage( const char *name, unsigned char* pic, const uint32_t wid
     // convert to exact power of 2 sizes
     // GetScaledDimension(width, height, &pImage->uploadWidth, &pImage->uploadHeight, allowPicmip);
   
-    const unsigned int max_texture_size = 2048;
+    const unsigned int max_texture_size = 4096;
     
     unsigned int scaled_width, scaled_height;
 
@@ -593,7 +593,7 @@ image_t* R_CreateImage( const char *name, unsigned char* pic, const uint32_t wid
         // ri.Printf( PRINT_WARNING, "ResampleTexture: inwidth: %d, inheight: %d, outwidth: %d, outheight: %d\n",
         //        width, height, scaled_width, scaled_height );
 
-        byte *tempBuffer = (byte*) malloc (4 * 2048 * 2048);
+        byte *tempBuffer = (byte*) malloc (4 * 4096 * 4096);
 
         memcpy(tempBuffer, pic, 4 * width * height);
         int cur_width = width;
@@ -633,7 +633,7 @@ image_t* R_CreateImage( const char *name, unsigned char* pic, const uint32_t wid
     // The set of all bytes bound to each destination region must not overlap
     // the set of all bytes bound to another destination region.
 
-    VkBufferImageCopy regions[12];
+    VkBufferImageCopy regions[16];
 
     regions[0].bufferOffset = 0;
     regions[0].bufferRowLength = 0;
@@ -1051,7 +1051,7 @@ void R_InitImages( void )
 {
     memset(hashTable, 0, sizeof(hashTable));
 
-    vk_createStagingBuffer(8 * 1024 * 1024);
+    vk_createStagingBuffer(IMAGE_CHUNK_SIZE);
 
 	// setup the overbright lighting
 

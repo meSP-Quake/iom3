@@ -931,11 +931,11 @@ RENDERER BACK END COMMAND QUEUE
 =============================================================
 */
 
-#define	MAX_RENDER_COMMANDS	0x40000
+#define	MAX_RENDER_COMMANDS	0x400000
 
 typedef struct {
-	byte	cmds[MAX_RENDER_COMMANDS];
 	int		used;
+	byte	cmds[MAX_RENDER_COMMANDS];
 } renderCommandList_t;
 
 typedef struct {
@@ -997,8 +997,13 @@ RENDERER BACK END FUNCTIONS
 =============================================================
 */
 
+typedef enum {
+	ALLOC_DEFAULT,
+	ALLOC_IMPORTANT,
+	ALLOC_CRITICAL
+} allocImportanceLevel_t;
 
-void *R_GetCommandBuffer( int bytes );
+void *R_GetCommandBuffer( int bytes, allocImportanceLevel_t level );
 void RB_ExecuteRenderCommands( const void *data );
 
 

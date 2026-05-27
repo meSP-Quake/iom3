@@ -311,7 +311,7 @@ static void R_TakeScreenshot( int x, int y, int width, int height, char *name, q
 {
 	static char	fileName[MAX_OSPATH] = {0}; // bad things if two screenshots per frame?
 	
-    screenshotCommand_t	*cmd = (screenshotCommand_t*) R_GetCommandBuffer(sizeof(*cmd));
+    screenshotCommand_t	*cmd = (screenshotCommand_t*) R_GetCommandBuffer(sizeof(*cmd), ALLOC_DEFAULT);
 	if ( !cmd ) {
 		return;
 	}
@@ -648,7 +648,7 @@ void RE_TakeVideoFrame( int width, int height, unsigned char *captureBuffer, uns
 		return;
 	}
 
-	videoFrameCommand_t	* cmd = R_GetCommandBuffer( sizeof( *cmd ) );
+	videoFrameCommand_t	* cmd = R_GetCommandBuffer( sizeof( *cmd ), ALLOC_DEFAULT );
 	if( !cmd ) {
 		return;
 	}

@@ -43,14 +43,27 @@ make sure there is enough command space, waiting on the
 render thread if needed.
 ============
 */
-void* R_GetCommandBuffer( int bytes )
+void* R_GetCommandBuffer( int bytes, allocImportanceLevel_t level )
 {
+	static int reserves[3];
 	renderCommandList_t	*cmdList = &BE_Commands;
+	int reserved = 4;
 
-	// always leave room for the end of list command
-	if ( cmdList->used + bytes + 4 > MAX_RENDER_COMMANDS )
-    {
-		if ( bytes > MAX_RENDER_COMMANDS - 4 ) {
+	// Reserve space for important levels, so non-important commands
+	// cannot stop critical ones to spawn in ( this leads to crashes
+	// sometimes ).
+	reserves[ALLOC_DEFAULT] = 0;
+	reserves[ALLOC_IMPORTANT] = 1024;
+	reserves[ALLOC_CRITICAL] = 256;
+
+	for (int i = ALLOC_CRITICAL; i > level; --i) {
+		reserved += reserves[i];
+	}
+
+	// always leave room for important commands
+	if ( cmdList->used + bytes + reserved > MAX_RENDER_COMMANDS )
+  {
+		if ( bytes > MAX_RENDER_COMMANDS - reserved ) {
 			ri.Error( ERR_FATAL, "R_GetCommandBuffer: bad size %i", bytes );
 		}
 		// if we run out of room, just start dropping commands
@@ -70,7 +83,8 @@ submits a single 'draw' command into the command queue
 */
 void R_AddDrawSurfCmd( drawSurf_t *drawSurfs, int numDrawSurfs )
 {
-	drawSurfsCommand_t* cmd = (drawSurfsCommand_t*) R_GetCommandBuffer( sizeof(drawSurfsCommand_t) );
+
+	drawSurfsCommand_t* cmd = (drawSurfsCommand_t*) R_GetCommandBuffer( sizeof(drawSurfsCommand_t), ALLOC_IMPORTANT );
 	if ( !cmd ) {
 		return;
 	}
@@ -98,7 +112,7 @@ void RE_SetColor( const float *rgba )
         return;
     }
     
-    setColorCommand_t* cmd = (setColorCommand_t*) R_GetCommandBuffer( sizeof(setColorCommand_t) );
+    setColorCommand_t* cmd = (setColorCommand_t*) R_GetCommandBuffer( sizeof(setColorCommand_t), ALLOC_DEFAULT );
 	if ( !cmd ) {
 		return;
 	}
@@ -128,7 +142,7 @@ void RE_StretchPic ( float x, float y, float w, float h,
     if (!tr.registered) {
         return;
     }
-    stretchPicCommand_t* cmd = (stretchPicCommand_t*) R_GetCommandBuffer(sizeof(stretchPicCommand_t));
+    stretchPicCommand_t* cmd = (stretchPicCommand_t*) R_GetCommandBuffer(sizeof(stretchPicCommand_t), ALLOC_DEFAULT);
 	if ( !cmd ) {
 		return;
 	}
@@ -155,7 +169,7 @@ void RE_BeginFrame( stereoFrame_t stereoFrame )
 	// use the other buffers next frame, because another CPU
 	// may still be rendering into the current ones
 	// draw buffer stuff
-	drawBufferCommand_t* cmd = (drawBufferCommand_t*) R_GetCommandBuffer(sizeof(drawBufferCommand_t));
+	drawBufferCommand_t* cmd = (drawBufferCommand_t*) R_GetCommandBuffer(sizeof(drawBufferCommand_t), ALLOC_CRITICAL);
 	if ( !cmd ) {
 		return;
 	}
@@ -175,7 +189,8 @@ void RE_EndFrame( int *frontEndMsec, int *backEndMsec )
 	if ( !tr.registered ) {
 		return;
 	}
-	swapBuffersCommand_t* cmd = (swapBuffersCommand_t*) R_GetCommandBuffer(sizeof(swapBuffersCommand_t));
+	swapBuffersCommand_t* cmd = (swapBuffersCommand_t*) R_GetCommandBuffer(sizeof(swapBuffersCommand_t), ALLOC_CRITICAL);
+
 	if ( !cmd ) {
 		return;
 	}

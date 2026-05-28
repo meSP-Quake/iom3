@@ -37,11 +37,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #ifndef DEDICATED
 #ifdef USE_INTERNAL_SDL_HEADERS
-#	include "SDL.h"
-#	include "SDL_cpuinfo.h"
+#	include "SDL3/SDL.h"
+#	include "SDL3/SDL_main.h"
+#	include "SDL3/SDL_cpuinfo.h"
 #else
-#	include <SDL.h>
-#	include <SDL_cpuinfo.h>
+#	include <SDL3/SDL.h>
+#	include <SDL3/SDL_main.h>
+#	include <SDL3/SDL_cpuinfo.h>
 #endif
 #endif
 
@@ -341,8 +343,6 @@ cpuFeatures_t Sys_GetProcessorFeatures( void )
 	cpuFeatures_t features = 0;
 
 #ifndef DEDICATED
-	if( SDL_HasRDTSC( ) )      features |= CF_RDTSC;
-	if( SDL_Has3DNow( ) )      features |= CF_3DNOW;
 	if( SDL_HasMMX( ) )        features |= CF_MMX;
 	if( SDL_HasSSE( ) )        features |= CF_SSE;
 	if( SDL_HasSSE2( ) )       features |= CF_SSE2;
@@ -362,6 +362,51 @@ void Sys_Init(void)
 	Cmd_AddCommand( "in_restart", Sys_In_Restart_f );
 	Cvar_Set( "arch", OS_STRING " " ARCH_STRING );
 	Cvar_Set( "username", Sys_GetCurrentUser( ) );
+}
+
+static qboolean CL_OSPCharHexToInt(char c, int* out)
+{
+	if (c >= '0' && c <= '9')
+	{
+		*out = c - '0';
+		return qtrue;
+	}
+	if (c >= 'a' && c <= 'f')
+	{
+		*out = c - 'a' + 10;
+		return qtrue;
+	}
+	if (c >= 'A' && c <= 'F')
+	{
+		*out = c - 'A' + 10;
+		return qtrue;
+	}
+	return qfalse;
+}
+
+qboolean CL_Hex16GetColor(const char* str, float* color)
+{
+	int d1;
+	int d2;
+	int color_int;
+	if (!str) return qfalse;
+
+	if (!CL_OSPCharHexToInt(str[0], &d1))
+	{
+		return  qfalse;
+	}
+
+	if (!CL_OSPCharHexToInt(str[1], &d2))
+	{
+		return  qfalse;
+	}
+
+	color_int = d1 * 16 + d2;
+
+	*color = (float)color_int;
+	*color /= 255.0f;
+
+	return qtrue;
 }
 
 /*
@@ -407,9 +452,34 @@ void Sys_AnsiColorPrint( const char *msg )
 			}
 			else
 			{
+				if (*(msg + 1) == 'X') {
+					vec3_t color;
+
+					msg += 2;
+
+					if (
+						strlen(msg) >= 6 &&
+						CL_Hex16GetColor(msg, &color[0]) &&
+						CL_Hex16GetColor(msg + 2, &color[1]) &&
+						CL_Hex16GetColor(msg + 4, &color[2])
+					) {
+						Com_sprintf(buffer, sizeof(buffer), "\033[0m\033[38;2;%i;%i;%im", 
+							(int)(color[0] * 255), (int)(color[1] * 255), (int)(color[2] * 255));
+						fputs(buffer, stderr);
+
+						msg += 6;
+						continue;
+					}
+
+					continue;
+				} else if (*(msg + 1) == 'x') {
+					msg += 8;
+					continue;
+				}
+
 				// Print the color code (reset first to clear potential inverse (black))
 				Com_sprintf( buffer, sizeof( buffer ), "\033[0m\033[%dm",
-						q3ToAnsi[ ColorIndex( *( msg + 1 ) ) ] );
+					q3ToAnsi[ ColorIndex( *( msg + 1 ) ) ] );
 				fputs( buffer, stderr );
 				msg += 2;
 			}
@@ -602,8 +672,9 @@ void *Sys_LoadGameDll(const char *name,
 	vmMainProc *entryPoint,
 	intptr_t (*systemcalls)(intptr_t, ...))
 {
+	typedef void (*dllEntry_t)(intptr_t (*syscallptr)(intptr_t, ...));
+	dllEntry_t dllEntry;
 	void *libHandle;
-	void (*dllEntry)(intptr_t (*syscallptr)(intptr_t, ...));
 
 	assert(name);
 
@@ -622,8 +693,8 @@ void *Sys_LoadGameDll(const char *name,
 		return NULL;
 	}
 
-	dllEntry = Sys_LoadFunction( libHandle, "dllEntry" );
-	*entryPoint = Sys_LoadFunction( libHandle, "vmMain" );
+	dllEntry = (dllEntry_t)Sys_LoadFunction( libHandle, "dllEntry" );
+	*entryPoint = (vmMainProc)Sys_LoadFunction( libHandle, "vmMain" );
 
 	if ( !*entryPoint || !dllEntry )
 	{
@@ -746,6 +817,8 @@ char *Sys_ParseProtocolUri( const char *uri )
 #	endif
 #endif
 
+#include <unistd.h>
+
 /*
 =================
 Sys_SigHandler
@@ -763,12 +836,14 @@ void Sys_SigHandler( int signal )
 	else
 	{
 		signalcaught = qtrue;
-		VM_Forced_Unload_Start();
+		// VM_Forced_Unload_Start();
 #ifndef DEDICATED
-		CL_Shutdown(va("Received signal %d", signal), qtrue, qtrue);
+		// CL_Shutdown(va("Received signal %d", signal), qtrue, qtrue);
 #endif
-		SV_Shutdown(va("Received signal %d", signal) );
-		VM_Forced_Unload_Done();
+		// SV_Shutdown(va("Received signal %d", signal) );
+		// VM_Forced_Unload_Done();
+
+		kill(getpid(), SIGILL);
 	}
 
 	if( signal == SIGTERM || signal == SIGINT )
@@ -798,25 +873,27 @@ int main( int argc, char **argv )
 	// SDL version check
 
 	// Compile time
-#	if !SDL_VERSION_ATLEAST(MINSDL_MAJOR,MINSDL_MINOR,MINSDL_PATCH)
+#	if !SDL_VERSION_ATLEAST(MINSDL_MAJOR,MINSDL_MINOR,MINSDL_MICRO)
 #		error A more recent version of SDL is required
 #	endif
 
 	// Run time
-	SDL_version ver;
-	SDL_GetVersion( &ver );
+	int version = SDL_GetVersion();
+	int major = SDL_VERSIONNUM_MAJOR(version);
+	int minor = SDL_VERSIONNUM_MINOR(version);
+	int micro = SDL_VERSIONNUM_MICRO(version);
 
 #define MINSDL_VERSION \
 	XSTRING(MINSDL_MAJOR) "." \
 	XSTRING(MINSDL_MINOR) "." \
-	XSTRING(MINSDL_PATCH)
+	XSTRING(MINSDL_MICRO)
 
-	if( SDL_VERSIONNUM( ver.major, ver.minor, ver.patch ) <
-			SDL_VERSIONNUM( MINSDL_MAJOR, MINSDL_MINOR, MINSDL_PATCH ) )
+	if( SDL_VERSIONNUM( major, minor, micro ) <
+			SDL_VERSIONNUM( MINSDL_MAJOR, MINSDL_MINOR, MINSDL_MICRO ) )
 	{
 		Sys_Dialog( DT_ERROR, va( "SDL version " MINSDL_VERSION " or greater is required, "
 			"but only version %d.%d.%d was found. You may be able to obtain a more recent copy "
-			"from https://www.libsdl.org/.", ver.major, ver.minor, ver.patch ), "SDL Library Too Old" );
+			"from https://www.libsdl.org/.", major, minor, micro ), "SDL Library Too Old" );
 
 		Sys_Exit( 1 );
 	}
@@ -881,9 +958,9 @@ int main( int argc, char **argv )
 	Com_Init( commandLine );
 	NET_Init( );
 
-	signal( SIGILL, Sys_SigHandler );
-	signal( SIGFPE, Sys_SigHandler );
-	signal( SIGSEGV, Sys_SigHandler );
+	// signal( SIGILL, Sys_SigHandler );
+	// signal( SIGFPE, Sys_SigHandler );
+	// signal( SIGSEGV, Sys_SigHandler );
 	signal( SIGTERM, Sys_SigHandler );
 	signal( SIGINT, Sys_SigHandler );
 

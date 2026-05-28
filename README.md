@@ -11,7 +11,7 @@ for **metarena** mod.
 
 ## What have been changed
 
-This is a quick changelog for iom3. If you're looking for full
+This is a quick changelog for **iom3**. If you're looking for full
 changes list, visit also [ioq3 readme](https://github.com/ioquake/ioq3).
 
 - `sv_forceSnaps` forces client snaps to sv_fps. Helps against client issues, with no harm to user's connection.
@@ -19,6 +19,12 @@ changes list, visit also [ioq3 readme](https://github.com/ioquake/ioq3).
 - + Soft colors
 - + Autocompletion
 - + Console now splitted into master tty and chat tty
+- Moved to **SDL3**.
+- Added experimental **Vulkan** support, based on [runlevel5's](https://github.com/runlevel5/ioq3/tree/add-vulkan-renderer) and [Sui Jingfeng's](https://github.com/suijingfeng/vkQuake3) forks of ioquake3 with improvements upon them:
+- + Renderer is now more stable and prone to errors, including fixed fullscreen mode for NVIDIA cards
+- + Fixed shader double free which caused `Hunk_freeTempMemory: bad magic`
+- + Mipmaps now look the same way they do under **OpenGL** renderers
+- + Increased texture limits for heavy mod builds
 
 ### How it looks like
 

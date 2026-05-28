@@ -509,7 +509,7 @@ image_t* R_CreateImage( const char *name, unsigned char* pic, const uint32_t wid
     }
 
 
-    ri.Printf( PRINT_ALL, " Create Image: %s\n", name);
+    ri.Printf( PRINT_DEVELOPER, " Create Image: %s\n", name);
     
     // Create image_t object.
 
@@ -1081,7 +1081,7 @@ void R_InitImages( void )
 static void vk_destroySingleImage( image_t* pImg )
 {
 
-   	ri.Printf(PRINT_ALL, " Destroy Image: %s \n", pImg->imgName); 
+   	ri.Printf(PRINT_DEVELOPER, " Destroy Image: %s \n", pImg->imgName); 
     if(pImg->descriptor_set != VK_NULL_HANDLE)
     {   
         //To free allocated descriptor sets

@@ -273,7 +273,7 @@ static void vk_create_pipeline(const struct Vk_Pipeline_Def* def, VkPipeline* pP
     // A vertex binding describes at which rate to load data
     // from memory throughout the vertices
 
-    VkVertexInputBindingDescription bindings[4];
+    VkVertexInputBindingDescription bindings[5];
     {
         // xyz array
         bindings[0].binding = 0;
@@ -285,18 +285,22 @@ static void vk_create_pipeline(const struct Vk_Pipeline_Def* def, VkPipeline* pP
         bindings[1].binding = 1;
         bindings[1].stride = sizeof(color4ub_t);
         bindings[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        // st0 array
+        // grayscale array
         bindings[2].binding = 2;
-        bindings[2].stride = sizeof(vec2_t);
+        bindings[2].stride = sizeof(vec_t);
         bindings[2].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        // st1 array
+        // st0 array
         bindings[3].binding = 3;
         bindings[3].stride = sizeof(vec2_t);
         bindings[3].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        // st1 array
+        bindings[4].binding = 4;
+        bindings[4].stride = sizeof(vec2_t);
+        bindings[4].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     }
 
     // Describes how to handle vertex input
-	VkVertexInputAttributeDescription attribs[4];
+	VkVertexInputAttributeDescription attribs[5];
     {
         // xyz
         attribs[0].location = 0;
@@ -308,25 +312,30 @@ static void vk_create_pipeline(const struct Vk_Pipeline_Def* def, VkPipeline* pP
         attribs[1].binding = 1;
         attribs[1].format = VK_FORMAT_R8G8B8A8_UNORM;
         attribs[1].offset = 0;
-        // st0
+        // grayscale
         attribs[2].location = 2;
         attribs[2].binding = 2;
-        attribs[2].format = VK_FORMAT_R32G32_SFLOAT;
+        attribs[2].format = VK_FORMAT_R32_SFLOAT;
         attribs[2].offset = 0;
-        // st1
+        // st0
         attribs[3].location = 3;
         attribs[3].binding = 3;
         attribs[3].format = VK_FORMAT_R32G32_SFLOAT;
         attribs[3].offset = 0;
+        // st1
+        attribs[4].location = 4;
+        attribs[4].binding = 4;
+        attribs[4].format = VK_FORMAT_R32G32_SFLOAT;
+        attribs[4].offset = 0;
     }
 
 	VkPipelineVertexInputStateCreateInfo vertex_input_state;
 	vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertex_input_state.pNext = NULL;
 	vertex_input_state.flags = 0;
-	vertex_input_state.vertexBindingDescriptionCount = (def->shader_type == ST_SINGLE_TEXTURE) ? 3 : 4;
+	vertex_input_state.vertexBindingDescriptionCount = (def->shader_type == ST_SINGLE_TEXTURE) ? 4 : 5;
 	vertex_input_state.pVertexBindingDescriptions = bindings;
-	vertex_input_state.vertexAttributeDescriptionCount = (def->shader_type == ST_SINGLE_TEXTURE) ? 3 : 4;
+	vertex_input_state.vertexAttributeDescriptionCount = (def->shader_type == ST_SINGLE_TEXTURE) ? 4 : 5;
 	vertex_input_state.pVertexAttributeDescriptions = attribs;
 
 	//

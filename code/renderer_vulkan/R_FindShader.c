@@ -142,7 +142,7 @@ most world construction surfaces.
 extern void setDefaultShader(void);
 
 
-shader_t* R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImage )
+shader_t* R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImage, qboolean isGrayscale )
 {
 	char strippedName[MAX_QPATH] = {0};
 
@@ -169,6 +169,9 @@ shader_t* R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImag
 	R_StripExtension(name, strippedName, sizeof(strippedName));
 
     int	hash = generateHashValue(strippedName, FILE_HASH_SIZE);
+
+    // // Distinguish grayscale and non-grayscale shaders
+    // hash = (hash + isGrayscale * 2857) & (FILE_HASH_SIZE-1);
 
 	//
 	// see if the shader is already loaded
@@ -213,7 +216,10 @@ shader_t* R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImag
                 ri.Printf( PRINT_WARNING, "ParseShader: %s had errors\n", strippedName );
             }
 
-            return FinishShader();
+            shader_t *sh = FinishShader();
+            sh->isGrayscale = isGrayscale;
+
+            return sh;
         }
     }
 
@@ -267,7 +273,11 @@ shader_t* R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImag
 	}
 
 
-    return FinishShader();
+    shader_t *sh = FinishShader();
+
+    sh->isGrayscale = isGrayscale;
+
+    return sh;
 }
 
 
@@ -292,7 +302,7 @@ qhandle_t RE_RegisterShader( const char *name )
 		return 0;
 	}
 
-    shader_t* sh = R_FindShader( name, LIGHTMAP_2D, qtrue );
+    shader_t* sh = R_FindShader( name, LIGHTMAP_2D, qtrue, qfalse );
 
 	// we want to return 0 if the shader failed to
 	// load for some reason, but R_FindShader should
@@ -321,7 +331,7 @@ qhandle_t RE_RegisterShaderNoMip( const char *name )
 		return 0;
 	}
  
-	shader_t* sh = R_FindShader( name, LIGHTMAP_2D, qfalse );
+	shader_t* sh = R_FindShader( name, LIGHTMAP_2D, qfalse, qfalse );
 
 	// we want to return 0 if the shader failed to
 	// load for some reason, but R_FindShader should
@@ -617,7 +627,7 @@ void RE_RemapShader(const char *shaderName, const char *newShaderName, const cha
             qhandle_t h;
             //h = RE_RegisterShaderLightMap(newShaderName, 0);
 
-            pSh = R_FindShader( newShaderName, 0, qtrue );
+            pSh = R_FindShader( newShaderName, 0, qtrue, qfalse );
 
             if ( pSh->defaultShader )
             {

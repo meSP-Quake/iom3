@@ -49,6 +49,7 @@ cvar_t	*r_intensity;
 cvar_t	*r_lockpvs;
 cvar_t	*r_noportals;
 cvar_t	*r_portalOnly;
+cvar_t	*r_mapGrayscale;
 
 cvar_t	*r_subdivisions;
 cvar_t	*r_lodCurveError;
@@ -159,15 +160,17 @@ void R_Register( void )
 	r_maxpolys = ri.Cvar_Get( "r_maxpolys", va("%d", 600), 0);
 	r_maxpolyverts = ri.Cvar_Get( "r_maxpolyverts", va("%d", 3000), 0);
 
-    r_fullscreen = ri.Cvar_Get( "r_fullscreen", "1", CVAR_ARCHIVE | CVAR_LATCH );
-    r_displayRefresh = ri.Cvar_Get( "r_displayRefresh", "60", CVAR_LATCH );
-    ri.Cvar_CheckRange( r_displayRefresh, 0, 200, qtrue );
+	r_fullscreen = ri.Cvar_Get( "r_fullscreen", "1", CVAR_ARCHIVE | CVAR_LATCH );
+	r_displayRefresh = ri.Cvar_Get( "r_displayRefresh", "60", CVAR_LATCH );
+	ri.Cvar_CheckRange( r_displayRefresh, 0, 200, qtrue );
 
-    r_allowResize = ri.Cvar_Get( "r_allowResize", "0", CVAR_ARCHIVE | CVAR_LATCH );
+	r_mapGrayscale = ri.Cvar_Get( "r_mapGrayscale", "0", CVAR_ARCHIVE );
 
-    r_mode = ri.Cvar_Get( "r_mode", "-2", CVAR_ARCHIVE | CVAR_LATCH );
+	r_allowResize = ri.Cvar_Get( "r_allowResize", "0", CVAR_ARCHIVE | CVAR_LATCH );
 
-    r_loadImgAPI = ri.Cvar_Get( "r_loadImgAPI", "0", CVAR_ARCHIVE | CVAR_LATCH );
+	r_mode = ri.Cvar_Get( "r_mode", "-2", CVAR_ARCHIVE | CVAR_LATCH );
 
-    r_swapInterval = ri.Cvar_Get( "r_swapInterval", "0", CVAR_ARCHIVE | CVAR_LATCH );
+	r_loadImgAPI = ri.Cvar_Get( "r_loadImgAPI", "0", CVAR_ARCHIVE | CVAR_LATCH );
+
+	r_swapInterval = ri.Cvar_Get( "r_swapInterval", "0", CVAR_ARCHIVE | CVAR_LATCH );
 }

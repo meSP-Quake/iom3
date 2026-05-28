@@ -237,7 +237,7 @@ static void vk_stagBufferToDeviceLocalMem(VkImage image, VkBufferImageCopy* pReg
 }
 
 
-#define FILE_HASH_SIZE	1024
+#define FILE_HASH_SIZE	16384
 static image_t*	hashTable[FILE_HASH_SIZE];
 
 static int generateHashValue( const char *fname )

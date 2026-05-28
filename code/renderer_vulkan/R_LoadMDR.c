@@ -370,7 +370,7 @@ qboolean R_LoadMDR( model_t *mod, void *buffer, int filesize, const char *mod_na
 			Q_strlwr( surf->name );
 
 			// register the shaders
-			sh = R_FindShader(surf->shader, LIGHTMAP_NONE, qtrue);
+			sh = R_FindShader(surf->shader, LIGHTMAP_NONE, qtrue, qfalse);
 			if ( sh->defaultShader ) {
 				surf->shaderIndex = 0;
 			} else {

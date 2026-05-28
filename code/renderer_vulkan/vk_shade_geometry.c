@@ -12,16 +12,18 @@
 #include "tr_shader.h"
 
 #define VERTEX_CHUNK_SIZE   (768 * 1024)
-#define INDEX_BUFFER_SIZE   (2 * 1024 * 1024)
+#define INDEX_BUFFER_SIZE   (4 * 1024 * 1024)
 
 #define XYZ_SIZE            (4 * VERTEX_CHUNK_SIZE)
 #define COLOR_SIZE          (1 * VERTEX_CHUNK_SIZE)
+#define GRAYSCALE_SIZE      (1 * VERTEX_CHUNK_SIZE)
 #define ST0_SIZE            (2 * VERTEX_CHUNK_SIZE)
 #define ST1_SIZE            (2 * VERTEX_CHUNK_SIZE)
 
 #define XYZ_OFFSET          0
 #define COLOR_OFFSET        (XYZ_OFFSET + XYZ_SIZE)
-#define ST0_OFFSET          (COLOR_OFFSET + COLOR_SIZE)
+#define GRAYSCALE_OFFSET    (COLOR_OFFSET + COLOR_SIZE)
+#define ST0_OFFSET          (GRAYSCALE_OFFSET + GRAYSCALE_SIZE)
 #define ST1_OFFSET          (ST0_OFFSET + ST0_SIZE)
 
 struct ShadingData_t
@@ -330,33 +332,43 @@ void updateCurDescriptor( VkDescriptorSet curDesSet, uint32_t tmu)
 void vk_shade_geometry(VkPipeline pipeline, VkBool32 multitexture, enum Vk_Depth_Range depRg, VkBool32 indexed)
 {
 	// configure vertex data stream
-	VkBuffer bufs[3] = { shadingDat.vertex_buffer, shadingDat.vertex_buffer, shadingDat.vertex_buffer };
-	VkDeviceSize offs[3] = {
-		COLOR_OFFSET + shadingDat.color_st_elements * sizeof(color4ub_t),
-		ST0_OFFSET   + shadingDat.color_st_elements * sizeof(vec2_t),
-		ST1_OFFSET   + shadingDat.color_st_elements * sizeof(vec2_t)
+	VkBuffer bufs[4] = { shadingDat.vertex_buffer, shadingDat.vertex_buffer, shadingDat.vertex_buffer, shadingDat.vertex_buffer };
+	VkDeviceSize offs[4] = {
+		COLOR_OFFSET     + shadingDat.color_st_elements * sizeof(color4ub_t),
+		GRAYSCALE_OFFSET + shadingDat.color_st_elements * sizeof(vec_t),
+		ST0_OFFSET       + shadingDat.color_st_elements * sizeof(vec2_t),
+		ST1_OFFSET       + shadingDat.color_st_elements * sizeof(vec2_t)
 	};
 
-    // color
-    if ((shadingDat.color_st_elements + tess.numVertexes) * sizeof(color4ub_t) > COLOR_SIZE)
-        ri.Error(ERR_DROP, "vulkan: vertex buffer overflow (color) %ld \n", 
-                (shadingDat.color_st_elements + tess.numVertexes) * sizeof(color4ub_t));
+	// color
+	if ((shadingDat.color_st_elements + tess.numVertexes) * sizeof(color4ub_t) > COLOR_SIZE)
+		ri.Error(ERR_DROP, "vulkan: vertex buffer overflow (color) %ld \n", 
+		         (shadingDat.color_st_elements + tess.numVertexes) * sizeof(color4ub_t));
 
-    unsigned char* dst_color = shadingDat.vertex_buffer_ptr + offs[0];
-    memcpy(dst_color, tess.svars.colors, tess.numVertexes * sizeof(color4ub_t));
-    // st0
+	unsigned char* dst_color = shadingDat.vertex_buffer_ptr + offs[0];
+	memcpy(dst_color, tess.svars.colors, tess.numVertexes * sizeof(color4ub_t));
 
-    unsigned char* dst_st0 = shadingDat.vertex_buffer_ptr + offs[1];
-    memcpy(dst_st0, tess.svars.texcoords[0], tess.numVertexes * sizeof(vec2_t));
+	// st0
+	unsigned char* dst_st0 = shadingDat.vertex_buffer_ptr + offs[2];
+	memcpy(dst_st0, tess.svars.texcoords[0], tess.numVertexes * sizeof(vec2_t));
+
+	{
+		// grayscale
+		float grayscale = tess.shader->isGrayscale ? r_mapGrayscale->value : 0.0f;
+
+		for (int i = 0; i < tess.numVertexes; ++i) {
+			memcpy(shadingDat.vertex_buffer_ptr + offs[1] + i * sizeof(vec_t), &grayscale, sizeof(vec_t));
+		}
+	}
 
 	// st1
 	if (multitexture)
-    {
-		unsigned char* dst = shadingDat.vertex_buffer_ptr + offs[2];
+	{
+		unsigned char* dst = shadingDat.vertex_buffer_ptr + offs[3];
 		memcpy(dst, tess.svars.texcoords[1], tess.numVertexes * sizeof(vec2_t));
 	}
 
-	qvkCmdBindVertexBuffers(vk.command_buffer, 1, multitexture ? 3 : 2, bufs, offs);
+	qvkCmdBindVertexBuffers(vk.command_buffer, 1, multitexture ? 4 : 3, bufs, offs);
 	shadingDat.color_st_elements += tess.numVertexes;
 
 	// bind descriptor sets

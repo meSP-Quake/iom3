@@ -5,6 +5,7 @@ layout(set = 0, binding = 0) uniform sampler2D texture0;
 layout(location = 0) in vec4 frag_color;
 layout(location = 1) in vec2 frag_tex_coord;
 layout(location = 3) in float frag_clip_dist;
+layout(location = 4) in float grayscale;
 
 layout(location = 0) out vec4 out_color;
 
@@ -15,6 +16,10 @@ void main() {
     if (clip_plane != 0 && frag_clip_dist < 0.0) discard;
 
     out_color = frag_color * texture(texture0, frag_tex_coord);
+
+    float lightness = dot(out_color.rgb, vec3(1./3.));
+
+    out_color.rgb = mix(out_color.rgb, vec3(lightness), grayscale);
 
     if (alpha_test_func == 1) {
         if (out_color.a == 0.0f) discard;

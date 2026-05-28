@@ -328,6 +328,8 @@ typedef struct shader_s {
 	qboolean	needsST2;
 	qboolean	needsColor;
 
+	qboolean  isGrayscale;
+
 	int			numDeforms;
 	deformStage_t	deforms[MAX_SHADER_DEFORMS];
 
@@ -758,7 +760,7 @@ skin_t	*R_GetSkinByHandle( qhandle_t hSkin );
 // qhandle_t RE_RegisterShaderLightMap( const char *name, int lightmapIndex );
 
 
-shader_t* R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImage );
+shader_t* R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImage, qboolean isGrayscale );
 shader_t* R_GetShaderByHandle( qhandle_t hShader );
 //shader_t* R_FindShaderByName( const char *name );
 

@@ -2201,7 +2201,7 @@ static void CreateExternalShaders( void )
 {
     ri.Printf( PRINT_ALL, "CreateExternalShaders\n" );
 
-	tr.projectionShadowShader = R_FindShader( "projectionShadow", LIGHTMAP_NONE, qtrue );
+	tr.projectionShadowShader = R_FindShader( "projectionShadow", LIGHTMAP_NONE, qtrue, qfalse );
 }
 
 
